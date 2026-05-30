@@ -1,0 +1,70 @@
+name: Deploy to Azure Container Apps
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AZURE_RESOURCE_GROUP: rg-zero-trading
+  ACR_NAME: acrzerotrading
+  CONTAINER_APP_NAME: ca-zero-agent
+  AUTH_JOB_NAME: ca-zero-auth
+  DASHBOARD_APP_NAME: ca-zero-dashboard
+  IMAGE_NAME: zero-agent
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to ACR
+        uses: azure/docker-login@v2
+        with:
+          login-server: ${{ env.ACR_NAME }}.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build and push Docker image
+        run: |
+          docker build -f deploy/Dockerfile -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+          docker build -f deploy/Dockerfile -t ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest .
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
+
+      - name: Deploy Trading Agent
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az containerapp update \
+              --name ${{ env.CONTAINER_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --image ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Deploy Auth Job
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az containerapp job update \
+              --name ${{ env.AUTH_JOB_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --image ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Deploy Dashboard
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az containerapp update \
+              --name ${{ env.DASHBOARD_APP_NAME }} \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --image ${{ env.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Logout
+        run: az logout

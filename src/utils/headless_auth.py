@@ -25,7 +25,53 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
-TOKEN_PATH = Path(".kite_token")
+STATE_DIR = os.getenv("STATE_DIR", ".")
+TOKEN_PATH = Path(STATE_DIR) / ".kite_token"
+
+
+def _load_secrets_from_keyvault() -> dict:
+    """Load secrets from Azure Key Vault using Managed Identity."""
+    vault_url = os.getenv("AZURE_KEY_VAULT_URL", "")
+    if not vault_url:
+        return {}
+
+    try:
+        from azure.identity import ManagedIdentityCredential, DefaultAzureCredential
+        from azure.keyvault.secrets import SecretClient
+
+        # Use ManagedIdentity in cloud, DefaultAzure for local dev
+        if os.getenv("AZURE_DEPLOYMENT"):
+            credential = ManagedIdentityCredential()
+        else:
+            credential = DefaultAzureCredential()
+
+        client = SecretClient(vault_url=vault_url, credential=credential)
+        secrets = {}
+        secret_names = {
+            "KITE-API-KEY": "KITE_API_KEY",
+            "KITE-API-SECRET": "KITE_API_SECRET",
+            "KITE-USER-ID": "KITE_USER_ID",
+            "KITE-PASSWORD": "KITE_PASSWORD",
+            "KITE-TOTP-SECRET": "KITE_TOTP_SECRET",
+            "OPENAI-API-KEY": "OPENAI_API_KEY",
+            "TELEGRAM-BOT-TOKEN": "TELEGRAM_BOT_TOKEN",
+            "TELEGRAM-CHAT-ID": "TELEGRAM_CHAT_ID",
+        }
+        for kv_name, env_name in secret_names.items():
+            try:
+                secret = client.get_secret(kv_name)
+                secrets[env_name] = secret.value
+            except Exception:
+                pass
+
+        logger.info(f"Loaded {len(secrets)} secrets from Key Vault")
+        return secrets
+    except ImportError:
+        logger.warning("azure-identity/azure-keyvault-secrets not installed")
+        return {}
+    except Exception as e:
+        logger.warning(f"Key Vault access failed: {e}")
+        return {}
 
 
 class HeadlessAuth:
@@ -37,16 +83,26 @@ class HeadlessAuth:
     def __init__(self, config_path: str = "config/settings.yaml"):
         self.config = self._load_config(config_path)
 
-        # Credentials from environment (Azure Key Vault → env vars)
-        self.api_key = os.getenv("KITE_API_KEY", "")
-        self.api_secret = os.getenv("KITE_API_SECRET", "")
-        self.user_id = os.getenv("KITE_USER_ID", "")
-        self.password = os.getenv("KITE_PASSWORD", "")
-        self.totp_secret = os.getenv("KITE_TOTP_SECRET", "")
+        # Try Azure Key Vault first, then fall back to env vars
+        kv_secrets = {}
+        if os.getenv("AZURE_KEY_VAULT_URL"):
+            kv_secrets = _load_secrets_from_keyvault()
+
+        self.api_key = kv_secrets.get("KITE_API_KEY") or os.getenv("KITE_API_KEY", "")
+        self.api_secret = kv_secrets.get("KITE_API_SECRET") or os.getenv("KITE_API_SECRET", "")
+        self.user_id = kv_secrets.get("KITE_USER_ID") or os.getenv("KITE_USER_ID", "")
+        self.password = kv_secrets.get("KITE_PASSWORD") or os.getenv("KITE_PASSWORD", "")
+        self.totp_secret = kv_secrets.get("KITE_TOTP_SECRET") or os.getenv("KITE_TOTP_SECRET", "")
+
+        # Also inject into env so other modules (notifier, analyst) can read them
+        for key in ["OPENAI_API_KEY", "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID"]:
+            val = kv_secrets.get(key)
+            if val and not os.getenv(key):
+                os.environ[key] = val
 
         if not all([self.api_key, self.api_secret, self.user_id, self.password, self.totp_secret]):
             raise ValueError(
-                "Missing credentials. Set environment variables: "
+                "Missing credentials. Set environment variables or configure Azure Key Vault: "
                 "KITE_API_KEY, KITE_API_SECRET, KITE_USER_ID, KITE_PASSWORD, KITE_TOTP_SECRET"
             )
 

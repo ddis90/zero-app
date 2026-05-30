@@ -5,9 +5,12 @@ __pycache__/
 
 # Environment
 .env
+*.env
+!.env.example
 .venv/
 venv/
 env/
+deploy/MY_SECRETS.env
 
 # Kite token (sensitive)
 .kite_token

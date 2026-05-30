@@ -13,11 +13,13 @@ import logging
 import os
 import sys
 import time
+import threading
 import signal as sig
 from datetime import datetime, timedelta
 
 import yaml
 import schedule
+from flask import Flask
 
 from src.utils.auth import KiteAuth
 from src.utils.notifier import TelegramNotifier
@@ -34,15 +36,41 @@ from src.strategies.theta_selling import ThetaSellingStrategy
 from src.strategies.momentum_swing import MomentumSwingStrategy
 
 # Setup logging
+STATE_DIR = os.getenv("STATE_DIR", ".")
+os.makedirs(os.path.join(STATE_DIR, "logs") if os.getenv("AZURE_DEPLOYMENT") else "logs", exist_ok=True)
+LOG_DIR = os.path.join(STATE_DIR, "logs") if os.getenv("AZURE_DEPLOYMENT") else "logs"
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(name)-20s | %(levelname)-7s | %(message)s",
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler("logs/system.log", mode="a"),
+        logging.FileHandler(os.path.join(LOG_DIR, "system.log"), mode="a"),
     ],
 )
 logger = logging.getLogger("orchestrator")
+
+
+# ============================================================
+# Health Check Endpoint (for Azure Container Apps probes)
+# ============================================================
+health_app = Flask(__name__)
+health_app.logger.setLevel(logging.WARNING)
+
+_system_healthy = True
+_system_started_at = datetime.now().isoformat()
+
+
+@health_app.route("/healthz")
+def healthz():
+    if _system_healthy:
+        return {"status": "healthy", "started_at": _system_started_at}, 200
+    return {"status": "unhealthy"}, 503
+
+
+def _run_health_server():
+    """Run health check server in background thread."""
+    health_app.run(host="0.0.0.0", port=8080, threaded=True)
 
 
 class TradingOrchestrator:
@@ -479,7 +507,15 @@ class TradingOrchestrator:
 
     def start(self):
         """Start the trading system with scheduled tasks."""
+        # Start health endpoint for Container Apps liveness probe
+        if os.getenv("AZURE_DEPLOYMENT"):
+            health_thread = threading.Thread(target=_run_health_server, daemon=True)
+            health_thread.start()
+            logger.info("Health endpoint started on :8080/healthz")
+
         if not self.initialize():
+            global _system_healthy
+            _system_healthy = False
             sys.exit(1)
 
         self.running = True
@@ -521,17 +557,19 @@ class TradingOrchestrator:
 def main():
     """Entry point."""
     # Create logs directory
-    os.makedirs("logs", exist_ok=True)
+    os.makedirs(LOG_DIR, exist_ok=True)
 
     paper_trade = os.getenv("PAPER_TRADE", "true").lower() == "true"
+    is_cloud = os.getenv("AZURE_DEPLOYMENT", "").lower() == "true"
     
     print("=" * 60)
     print("  Zero Trading Agent")
     print(f"  Mode: {'📝 PAPER TRADING' if paper_trade else '💰 LIVE TRADING'}")
+    print(f"  Env:  {'☁️ Azure Cloud' if is_cloud else '🖥️ Local'}")
     print(f"  Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
 
-    if not paper_trade:
+    if not paper_trade and not is_cloud:
         confirm = input("\n⚠️  LIVE TRADING MODE! Type 'CONFIRM' to proceed: ")
         if confirm != "CONFIRM":
             print("Aborted.")
