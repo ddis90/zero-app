@@ -1,0 +1,14 @@
+# Market hours scheduling for Linux/Docker deployment
+# Cron expressions for IST (Indian Standard Time, UTC+5:30)
+
+# Start trading agent at 8:50 AM IST (3:20 AM UTC)
+20 3 * * 1-5 cd /app && python -m src.main >> /app/logs/cron.log 2>&1
+
+# Stop trading agent at 3:45 PM IST (10:15 AM UTC)  
+15 10 * * 1-5 pkill -f "python -m src.main" >> /app/logs/cron.log 2>&1
+
+# Daily token cleanup at 6:30 AM IST (1:00 AM UTC)
+0 1 * * * rm -f /app/.kite_token
+
+# Weekly log rotation on Sunday
+0 0 * * 0 find /app/logs -name "*.log" -size +50M -exec truncate -s 0 {} \;

@@ -1,0 +1,56 @@
+# =============================================================================
+# Instrument Universe Configuration
+# =============================================================================
+
+# Options instruments for theta selling
+options_instruments:
+  - symbol: "NIFTY"
+    exchange: "NFO"
+    lot_size: 25
+    margin_per_lot: 40000
+    max_lots: 2
+  - symbol: "BANKNIFTY"
+    exchange: "NFO"
+    lot_size: 15
+    margin_per_lot: 35000
+    max_lots: 2
+
+# Index ETFs for systematic accumulation
+etf_instruments:
+  - symbol: "NIFTYBEES"
+    exchange: "NSE"
+    sip_amount: 10000
+    frequency: "weekly"
+  - symbol: "BANKBEES"
+    exchange: "NSE"
+    sip_amount: 5000
+    frequency: "weekly"
+  - symbol: "JUNIORBEES"
+    exchange: "NSE"
+    sip_amount: 5000
+    frequency: "monthly"
+
+# Watchlist sectors for swing trading (Nifty 500 filtered)
+swing_sectors:
+  - "NIFTY IT"
+  - "NIFTY BANK"
+  - "NIFTY PHARMA"
+  - "NIFTY AUTO"
+  - "NIFTY FMCG"
+  - "NIFTY METAL"
+  - "NIFTY ENERGY"
+
+# Blacklisted stocks (avoid these regardless of signals)
+blacklist:
+  - "ADANIPOWER"     # High volatility, governance concerns
+  - "YESBANK"        # Restructured, unpredictable
+  - "VODAIDEA"       # High debt, uncertain future
+  - "SUZLON"         # Restructured
+
+# High-impact event calendar (no trading on these dates)
+# Updated monthly - agent will also check dynamically
+no_trade_events:
+  - "RBI_POLICY"
+  - "UNION_BUDGET"
+  - "US_FED_DECISION"
+  - "QUARTERLY_EXPIRY"

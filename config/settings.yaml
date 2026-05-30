@@ -1,0 +1,99 @@
+# =============================================================================
+# Zero Trading Agent - Configuration
+# =============================================================================
+
+broker:
+  api_key: "${KITE_API_KEY}"
+  api_secret: "${KITE_API_SECRET}"
+  totp_secret: "${KITE_TOTP_SECRET}"
+  user_id: "${KITE_USER_ID}"
+  redirect_url: "http://127.0.0.1:5000/callback"
+
+# Capital & Position Sizing
+capital:
+  total: 200000
+  allocation:
+    options_theta: 0.60      # 60% for options selling (₹1.2L margin)
+    swing_trading: 0.25      # 25% for swing trades (₹50K)
+    index_etf: 0.15          # 15% for ETF accumulation (₹30K)
+
+# Risk Management Guardrails
+risk:
+  max_risk_per_trade_pct: 2.0          # Max 2% of capital per trade
+  daily_loss_limit_pct: 2.0            # Stop trading if 2% daily loss
+  weekly_loss_limit_pct: 5.0           # Pause for week if 5% weekly loss
+  max_open_positions: 5                 # Maximum concurrent positions
+  max_consecutive_losses: 3             # Auto-pause after 3 consecutive losses
+  min_reward_risk_ratio: 1.5           # Minimum R:R for swing trades
+  options_max_lots: 2                   # Max lots per options trade (Nifty)
+  trailing_stop_pct: 1.5               # Trailing stop percentage
+
+# Stock Universe Filters (No Penny Stocks)
+universe:
+  min_market_cap_cr: 5000              # Minimum ₹5,000 Cr market cap
+  min_avg_volume_cr: 10                # Minimum ₹10 Cr daily volume
+  index_membership: ["NIFTY 500"]      # Only Nifty 500 stocks
+  fundamental_filters:
+    min_roe: 12.0                      # ROE > 12%
+    max_debt_equity: 1.0               # D/E < 1
+    min_promoter_holding: 40.0         # Promoter > 40%
+  technical_filters:
+    above_200dma: true                 # Must be above 200 DMA
+    rsi_entry_range: [30, 70]          # RSI between 30-70 for entries
+
+# Options Strategy Parameters
+options:
+  instruments: ["NIFTY", "BANKNIFTY"]
+  strategy_type: "credit_spread"       # iron_condor, credit_spread, naked_sell
+  days_to_expiry_entry: [3, 5]         # Enter 3-5 days before expiry
+  otm_distance_pct: 3.0               # Sell strikes 3% OTM
+  max_premium_risk_ratio: 3.0         # Max risk = 3x premium collected
+  vix_threshold: 20.0                  # Don't sell if India VIX > 20
+  stop_loss_pct: 50.0                  # Exit if loss = 50% of max profit
+
+# Swing Trading Parameters
+swing:
+  holding_period_days: [3, 15]         # Hold 3-15 days
+  entry_signals: ["momentum_breakout", "mean_reversion", "volume_surge"]
+  exit_signals: ["target_hit", "stop_loss", "time_exit", "trailing_stop"]
+  min_volume_surge_multiplier: 2.0     # Volume must be 2x average for breakout
+
+# Market Hours (IST)
+schedule:
+  pre_market_start: "08:50"
+  market_open: "09:15"
+  market_close: "15:30"
+  post_market_end: "15:45"
+  no_trade_zones:                      # Avoid trading during
+    - "09:15-09:25"                    # Opening volatility
+    - "15:20-15:30"                    # Closing volatility
+
+# Notifications
+notifications:
+  telegram:
+    bot_token: "${TELEGRAM_BOT_TOKEN}"
+    chat_id: "${TELEGRAM_CHAT_ID}"
+  alerts:
+    - trade_executed
+    - stop_loss_hit
+    - daily_pnl_summary
+    - risk_limit_breach
+    - system_error
+
+# AI/LLM Configuration
+ai:
+  provider: "openai"                   # openai, anthropic
+  model: "gpt-4o-mini"                 # Cost-efficient for screening
+  api_key: "${OPENAI_API_KEY}"
+  max_tokens_per_day: 50000            # Cost control
+  use_for:
+    - news_sentiment
+    - earnings_analysis
+    - regime_detection
+
+# Logging
+logging:
+  level: "INFO"
+  trade_log_file: "logs/trades.json"
+  system_log_file: "logs/system.log"
+  max_log_size_mb: 50

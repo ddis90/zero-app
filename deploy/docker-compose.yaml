@@ -1,0 +1,48 @@
+version: "3.8"
+
+services:
+  trading-agent:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: zero-trading-agent
+    restart: unless-stopped
+    environment:
+      - KITE_API_KEY=${KITE_API_KEY}
+      - KITE_API_SECRET=${KITE_API_SECRET}
+      - KITE_TOTP_SECRET=${KITE_TOTP_SECRET}
+      - KITE_USER_ID=${KITE_USER_ID}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - PAPER_TRADE=${PAPER_TRADE:-true}
+    volumes:
+      - ../logs:/app/logs
+      - ../config:/app/config
+    ports:
+      - "5000:5000"  # Login server
+    networks:
+      - trading-net
+
+  # Optional: Streamlit dashboard
+  dashboard:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: zero-dashboard
+    command: ["streamlit", "run", "dashboard/app.py", "--server.port=8501"]
+    ports:
+      - "8501:8501"
+    environment:
+      - KITE_API_KEY=${KITE_API_KEY}
+      - KITE_API_SECRET=${KITE_API_SECRET}
+    volumes:
+      - ../logs:/app/logs
+    networks:
+      - trading-net
+    profiles:
+      - dashboard
+
+networks:
+  trading-net:
+    driver: bridge

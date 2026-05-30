@@ -1,0 +1,223 @@
+"""
+Headless Kite Connect Authentication.
+Uses Playwright (headless Chromium) to auto-login to Zerodha without a visible browser.
+Designed for cloud deployment where no GUI is available.
+
+Flow:
+1. Navigate to Kite login
+2. Enter user ID + password
+3. Auto-fill TOTP
+4. Capture redirect with request_token
+5. Generate access token via API
+6. Save token to persistent storage
+
+Requires: playwright install chromium
+"""
+
+import logging
+import os
+import time
+from datetime import datetime
+from pathlib import Path
+
+import pyotp
+import yaml
+
+logger = logging.getLogger(__name__)
+
+TOKEN_PATH = Path(".kite_token")
+
+
+class HeadlessAuth:
+    """
+    Automated Kite Connect login using Playwright headless browser.
+    No human interaction needed — perfect for cloud/cron deployment.
+    """
+
+    def __init__(self, config_path: str = "config/settings.yaml"):
+        self.config = self._load_config(config_path)
+
+        # Credentials from environment (Azure Key Vault → env vars)
+        self.api_key = os.getenv("KITE_API_KEY", "")
+        self.api_secret = os.getenv("KITE_API_SECRET", "")
+        self.user_id = os.getenv("KITE_USER_ID", "")
+        self.password = os.getenv("KITE_PASSWORD", "")
+        self.totp_secret = os.getenv("KITE_TOTP_SECRET", "")
+
+        if not all([self.api_key, self.api_secret, self.user_id, self.password, self.totp_secret]):
+            raise ValueError(
+                "Missing credentials. Set environment variables: "
+                "KITE_API_KEY, KITE_API_SECRET, KITE_USER_ID, KITE_PASSWORD, KITE_TOTP_SECRET"
+            )
+
+    def _load_config(self, path: str) -> dict:
+        with open(path, "r") as f:
+            return yaml.safe_load(f)
+
+    def login(self, max_retries: int = 3) -> dict:
+        """
+        Perform headless login and return access token.
+        
+        Returns:
+            dict with keys: access_token, user_id, login_time
+            
+        Raises:
+            RuntimeError on login failure after retries
+        """
+        for attempt in range(1, max_retries + 1):
+            try:
+                logger.info(f"Headless login attempt {attempt}/{max_retries}")
+                request_token = self._get_request_token()
+                if request_token:
+                    token_data = self._generate_access_token(request_token)
+                    self._save_token(token_data)
+                    logger.info(f"Login successful! Token valid until 6 AM tomorrow.")
+                    return token_data
+            except Exception as e:
+                logger.error(f"Login attempt {attempt} failed: {e}")
+                if attempt < max_retries:
+                    time.sleep(5)  # Wait before retry
+
+        raise RuntimeError(f"Headless login failed after {max_retries} attempts")
+
+    def _get_request_token(self) -> str:
+        """Use Playwright to navigate login flow and capture request_token."""
+        from playwright.sync_api import sync_playwright
+
+        login_url = f"https://kite.zerodha.com/connect/login?v=3&api_key={self.api_key}"
+        request_token = None
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            context = browser.new_context(
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            )
+            page = context.new_page()
+
+            try:
+                # Step 1: Navigate to login
+                page.goto(login_url, wait_until="networkidle", timeout=30000)
+                logger.debug("Login page loaded")
+
+                # Step 2: Enter User ID
+                page.fill("input[type='text']", self.user_id)
+                page.fill("input[type='password']", self.password)
+                page.click("button[type='submit']")
+                logger.debug("Credentials submitted")
+
+                # Step 3: Wait for TOTP page
+                page.wait_for_selector("input[type='text']", timeout=10000)
+                time.sleep(1)  # Brief pause for page transition
+
+                # Step 4: Generate and enter TOTP
+                totp = pyotp.TOTP(self.totp_secret)
+                otp_code = totp.now()
+                page.fill("input[type='text']", otp_code)
+                page.click("button[type='submit']")
+                logger.debug("TOTP submitted")
+
+                # Step 5: Wait for redirect to callback URL
+                page.wait_for_url("**/callback**", timeout=15000)
+                callback_url = page.url
+                logger.debug(f"Callback URL captured: {callback_url[:80]}...")
+
+                # Extract request_token from URL
+                from urllib.parse import urlparse, parse_qs
+                parsed = urlparse(callback_url)
+                params = parse_qs(parsed.query)
+                request_token = params.get("request_token", [None])[0]
+
+                if not request_token:
+                    raise RuntimeError(f"No request_token in callback URL: {callback_url}")
+
+            except Exception as e:
+                # Take screenshot for debugging
+                screenshot_path = "logs/login_error.png"
+                os.makedirs("logs", exist_ok=True)
+                page.screenshot(path=screenshot_path)
+                logger.error(f"Login error (screenshot: {screenshot_path}): {e}")
+                raise
+            finally:
+                browser.close()
+
+        return request_token
+
+    def _generate_access_token(self, request_token: str) -> dict:
+        """Exchange request_token for access_token via Kite API."""
+        from kiteconnect import KiteConnect
+
+        kite = KiteConnect(api_key=self.api_key)
+        data = kite.generate_session(request_token, api_secret=self.api_secret)
+
+        return {
+            "access_token": data["access_token"],
+            "user_id": data.get("user_id", self.user_id),
+            "login_time": datetime.now().isoformat(),
+            "api_key": self.api_key,
+        }
+
+    def _save_token(self, token_data: dict):
+        """Save token to file (mounted Azure Files in cloud)."""
+        import json
+        TOKEN_PATH.write_text(json.dumps(token_data))
+        logger.info(f"Token saved to {TOKEN_PATH}")
+
+    def load_saved_token(self) -> dict:
+        """Load previously saved token if still valid."""
+        import json
+
+        if not TOKEN_PATH.exists():
+            return None
+
+        try:
+            data = json.loads(TOKEN_PATH.read_text())
+            login_time = datetime.fromisoformat(data["login_time"])
+
+            # Tokens expire at 6 AM IST next day
+            now = datetime.now()
+            if login_time.date() == now.date() and now.hour < 6:
+                return data
+            if login_time.date() == now.date() and now.hour >= 6:
+                return None  # Expired
+            if (now - login_time).days == 0:
+                return data
+
+            return None  # Expired (different day)
+        except Exception:
+            return None
+
+    def ensure_authenticated(self) -> dict:
+        """
+        Ensure we have a valid token. Load from file or login fresh.
+        This is the main entry point for the orchestrator.
+        """
+        saved = self.load_saved_token()
+        if saved:
+            logger.info("Using saved token (still valid)")
+            return saved
+
+        logger.info("Token expired or not found. Performing headless login...")
+        return self.login()
+
+
+def main():
+    """CLI entry point for manual headless login."""
+    logging.basicConfig(level=logging.INFO)
+    
+    print("Zero Agent — Headless Kite Login")
+    print("-" * 40)
+
+    try:
+        auth = HeadlessAuth()
+        token = auth.login()
+        print(f"✅ Login successful!")
+        print(f"   User: {token['user_id']}")
+        print(f"   Time: {token['login_time']}")
+        print(f"   Token saved to: {TOKEN_PATH}")
+    except Exception as e:
+        print(f"❌ Login failed: {e}")
+        raise SystemExit(1)
+
+
+if __name__ == "__main__":
+    main()
