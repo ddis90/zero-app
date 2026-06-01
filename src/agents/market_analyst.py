@@ -13,9 +13,12 @@ Enhanced with:
 import logging
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from typing import Optional
 
 import yaml
+
+IST = ZoneInfo("Asia/Kolkata")
 
 from src.data.news_feed import NewsFeed
 from src.data.global_cues import GlobalCuesFetcher, GlobalCues
@@ -223,7 +226,7 @@ Respond in JSON format:
         nifty_change = market_data.get("nifty_change_pct", 0)
 
         return (
-            f"📊 Market Brief | {datetime.now().strftime('%d-%b-%Y')}\n"
+            f"📊 Market Brief | {datetime.now(IST).strftime('%d-%b-%Y')}\n"
             f"Regime: {regime.replace('_', ' ').title()}\n"
             f"Nifty: {nifty_change:+.1f}% | VIX: {vix:.1f}\n"
             f"Strategy: {'Active' if regime != 'volatile' else '⚠️ Paused'}"
@@ -370,7 +373,7 @@ Respond in JSON format:
         rec = context.get("recommendation", {})
 
         lines = [
-            f"📊 <b>Market Brief</b> | {datetime.now().strftime('%d-%b-%Y %H:%M')}",
+            f"📊 <b>Market Brief</b> | {datetime.now(IST).strftime('%d-%b-%Y %H:%M')}",
             f"{'─' * 30}",
             f"Regime: {regime.replace('_', ' ').title()}",
             f"VIX: {context.get('vix', 0):.1f}",

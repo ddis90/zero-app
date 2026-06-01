@@ -19,11 +19,14 @@ import os
 import time
 from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pyotp
 import yaml
 
 logger = logging.getLogger(__name__)
+
+IST = ZoneInfo("Asia/Kolkata")
 
 STATE_DIR = os.getenv("STATE_DIR", ".")
 TOKEN_PATH = Path(STATE_DIR) / ".kite_token"
@@ -208,7 +211,7 @@ class HeadlessAuth:
         return {
             "access_token": data["access_token"],
             "user_id": data.get("user_id", self.user_id),
-            "login_time": datetime.now().isoformat(),
+            "login_time": datetime.now(IST).isoformat(),
             "api_key": self.api_key,
         }
 
@@ -230,12 +233,13 @@ class HeadlessAuth:
             login_time = datetime.fromisoformat(data["login_time"])
 
             # Tokens expire at 6 AM IST next day
-            now = datetime.now()
-            if login_time.date() == now.date() and now.hour < 6:
+            now = datetime.now(IST)
+            login_date = login_time.date() if login_time.tzinfo else login_time.date()
+            if login_date == now.date() and now.hour < 6:
                 return data
-            if login_time.date() == now.date() and now.hour >= 6:
-                return None  # Expired
-            if (now - login_time).days == 0:
+            if login_date == now.date() and now.hour >= 6:
+                return data  # Same day, token valid until next 6 AM
+            if (now.date() - login_date).days == 0:
                 return data
 
             return None  # Expired (different day)

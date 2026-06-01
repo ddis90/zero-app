@@ -5,11 +5,14 @@ Telegram notification bot for trade alerts and daily summaries.
 import logging
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import yaml
 import requests
 
 logger = logging.getLogger(__name__)
+
+IST = ZoneInfo("Asia/Kolkata")
 
 
 class TelegramNotifier:
@@ -60,7 +63,7 @@ class TelegramNotifier:
             f"SL: ₹{trade_details.get('stop_loss', 0):.1f}\n"
             f"Target: ₹{trade_details.get('target', 0):.1f}\n"
             f"Strategy: {trade_details.get('strategy', 'N/A')}\n"
-            f"Time: {datetime.now().strftime('%H:%M:%S')}"
+            f"Time: {datetime.now(IST).strftime('%H:%M:%S')}"
         )
         self.send_message(msg)
 
@@ -70,7 +73,7 @@ class TelegramNotifier:
             f"🛑 <b>Stop Loss Hit</b>\n"
             f"Symbol: <b>{symbol}</b>\n"
             f"Loss: ₹{abs(loss):.0f}\n"
-            f"Time: {datetime.now().strftime('%H:%M:%S')}"
+            f"Time: {datetime.now(IST).strftime('%H:%M:%S')}"
         )
         self.send_message(msg)
 
@@ -80,7 +83,7 @@ class TelegramNotifier:
             f"🎯 <b>Target Hit!</b>\n"
             f"Symbol: <b>{symbol}</b>\n"
             f"Profit: ₹{profit:.0f}\n"
-            f"Time: {datetime.now().strftime('%H:%M:%S')}"
+            f"Time: {datetime.now(IST).strftime('%H:%M:%S')}"
         )
         self.send_message(msg)
 
@@ -95,7 +98,7 @@ class TelegramNotifier:
         day_return_pct = (pnl / total_capital * 100) if total_capital > 0 else 0
 
         msg = (
-            f"{pnl_emoji} <b>Daily Summary</b> | {datetime.now().strftime('%d-%b-%Y (%A)')}\n"
+            f"{pnl_emoji} <b>Daily Summary</b> | {datetime.now(IST).strftime('%d-%b-%Y (%A)')}\n"
             f"{'─' * 30}\n"
             f"<b>P&L: {'₹' + f'{pnl:,.0f}' if pnl >= 0 else '-₹' + f'{abs(pnl):,.0f}'}</b> "
             f"({day_return_pct:+.2f}%)\n\n"
@@ -117,7 +120,7 @@ class TelegramNotifier:
         msg = (
             f"⚠️ <b>RISK ALERT</b>\n"
             f"Trading PAUSED: {reason}\n"
-            f"Time: {datetime.now().strftime('%H:%M:%S')}\n"
+            f"Time: {datetime.now(IST).strftime('%H:%M:%S')}\n"
             f"Action: Auto-shutdown activated"
         )
         self.send_message(msg)
@@ -127,7 +130,7 @@ class TelegramNotifier:
         msg = (
             f"🚨 <b>SYSTEM ERROR</b>\n"
             f"{error[:200]}\n"
-            f"Time: {datetime.now().strftime('%H:%M:%S')}"
+            f"Time: {datetime.now(IST).strftime('%H:%M:%S')}"
         )
         self.send_message(msg)
 
@@ -135,7 +138,7 @@ class TelegramNotifier:
         """Notify when trading system starts."""
         msg = (
             f"🚀 <b>Trading Agent Started</b>\n"
-            f"Time: {datetime.now().strftime('%H:%M:%S %d-%b-%Y')}\n"
+            f"Time: {datetime.now(IST).strftime('%H:%M:%S %d-%b-%Y')}\n"
             f"Mode: {'PAPER' if os.getenv('PAPER_TRADE', '').lower() == 'true' else 'LIVE'}"
         )
         self.send_message(msg)

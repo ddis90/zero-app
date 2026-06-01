@@ -19,7 +19,10 @@ from datetime import datetime, timedelta
 
 import yaml
 import schedule
+from zoneinfo import ZoneInfo
 from flask import Flask
+
+IST = ZoneInfo("Asia/Kolkata")
 
 from src.utils.auth import KiteAuth
 from src.utils.notifier import TelegramNotifier
@@ -34,6 +37,7 @@ from src.agents.executor import OrderExecutor
 from src.agents.learner import Learner
 from src.strategies.theta_selling import ThetaSellingStrategy
 from src.strategies.momentum_swing import MomentumSwingStrategy
+from src.utils.headless_auth import HeadlessAuth
 
 # Setup logging
 STATE_DIR = os.getenv("STATE_DIR", ".")
@@ -58,7 +62,7 @@ health_app = Flask(__name__)
 health_app.logger.setLevel(logging.WARNING)
 
 _system_healthy = True
-_system_started_at = datetime.now().isoformat()
+_system_started_at = datetime.now(IST).isoformat()
 
 
 @health_app.route("/healthz")
@@ -119,16 +123,32 @@ class TradingOrchestrator:
     def initialize(self) -> bool:
         """Initialize all components. Must be called after authentication."""
         try:
-            # Try to load saved token first
-            if not self.auth.load_saved_token():
-                logger.error(
-                    "No valid token found. Run login server first:\n"
-                    "  python -m src.utils.login_server"
-                )
-                return False
+            is_cloud = os.getenv("AZURE_DEPLOYMENT", "").lower() == "true"
 
-            kite = self.auth.get_kite()
-            logger.info(f"Authenticated as: {self.auth.user_id}")
+            if is_cloud:
+                # In cloud: use HeadlessAuth which reads from STATE_DIR/.kite_token
+                # The ca-zero-auth job runs at 8:40 AM and saves the token there
+                headless = HeadlessAuth()
+                token_data = headless.ensure_authenticated()
+                if not token_data:
+                    logger.error("Cloud auth failed - no valid token from headless_auth")
+                    return False
+                from kiteconnect import KiteConnect as KC
+                kite = KC(api_key=token_data["api_key"])
+                kite.set_access_token(token_data["access_token"])
+                self.auth._access_token = token_data["access_token"]
+                self.auth.kite = kite
+                logger.info(f"Authenticated via headless auth: {token_data['user_id']}")
+            else:
+                # Local: use KiteAuth with login server token
+                if not self.auth.load_saved_token():
+                    logger.error(
+                        "No valid token found. Run login server first:\n"
+                        "  python -m src.utils.login_server"
+                    )
+                    return False
+                kite = self.auth.get_kite()
+                logger.info(f"Authenticated as: {self.auth.user_id}")
 
             # Initialize components with authenticated kite instance
             self.fetcher = DataFetcher(kite)
@@ -154,7 +174,7 @@ class TradingOrchestrator:
 
         # Reset daily counters
         self.risk_manager.reset_daily()
-        if datetime.now().weekday() == 0:  # Monday
+        if datetime.now(IST).weekday() == 0:  # Monday
             self.risk_manager.reset_weekly()
 
         # Build full market context (news + global + RAG)
@@ -222,7 +242,7 @@ class TradingOrchestrator:
                 # Find expiry 3-5 days away
                 target_expiry = None
                 for exp in nifty_expiries:
-                    days_to_exp = (exp - datetime.now().date()).days
+                    days_to_exp = (exp - datetime.now(IST).date()).days
                     if 3 <= days_to_exp <= 5:
                         target_expiry = exp
                         break
@@ -544,7 +564,7 @@ class TradingOrchestrator:
         logger.info("Trading system started. Waiting for scheduled tasks...")
 
         while self.running:
-            now = datetime.now().time()
+            now = datetime.now(IST).time()
             market_start = datetime.strptime("08:50", "%H:%M").time()
             market_end = datetime.strptime("15:45", "%H:%M").time()
 
@@ -572,7 +592,7 @@ def main():
     print("  Zero Trading Agent")
     print(f"  Mode: {'📝 PAPER TRADING' if paper_trade else '💰 LIVE TRADING'}")
     print(f"  Env:  {'☁️ Azure Cloud' if is_cloud else '🖥️ Local'}")
-    print(f"  Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"  Time: {datetime.now(IST).strftime('%Y-%m-%d %H:%M:%S')} IST")
     print("=" * 60)
 
     if not paper_trade and not is_cloud:

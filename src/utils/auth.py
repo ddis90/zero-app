@@ -7,12 +7,15 @@ import os
 import time
 import logging
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 import pyotp
 import yaml
 from kiteconnect import KiteConnect
 
 logger = logging.getLogger(__name__)
+
+IST = ZoneInfo("Asia/Kolkata")
 
 
 class KiteAuth:
@@ -66,8 +69,8 @@ class KiteAuth:
             self._access_token = session["access_token"]
             self.kite.set_access_token(self._access_token)
             # Kite tokens expire at 6 AM next day
-            tomorrow = datetime.now().replace(hour=6, minute=0, second=0)
-            if tomorrow < datetime.now():
+            tomorrow = datetime.now(IST).replace(hour=6, minute=0, second=0)
+            if tomorrow < datetime.now(IST):
                 tomorrow += timedelta(days=1)
             self._token_expiry = tomorrow
             logger.info(f"Authentication successful for user: {self.user_id}")
@@ -95,7 +98,7 @@ class KiteAuth:
             saved_time = datetime.fromisoformat(data["saved_at"])
             # Token valid until 6 AM next day
             expiry = saved_time.replace(hour=6, minute=0, second=0) + timedelta(days=1)
-            if datetime.now() < expiry:
+            if datetime.now(IST).replace(tzinfo=None) < expiry:
                 self._access_token = data["access_token"]
                 self._token_expiry = expiry
                 self.kite.set_access_token(self._access_token)
@@ -113,7 +116,7 @@ class KiteAuth:
         if self._access_token:
             data = {
                 "access_token": self._access_token,
-                "saved_at": datetime.now().isoformat(),
+                "saved_at": datetime.now(IST).isoformat(),
                 "user_id": self.user_id,
             }
             with open(token_file, "w") as f:

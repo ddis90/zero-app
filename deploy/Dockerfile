@@ -6,6 +6,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     curl \
+    tzdata \
     libnss3 \
     libnspr4 \
     libatk1.0-0 \
@@ -44,6 +45,7 @@ ENV PYTHONUNBUFFERED=1
 ENV PAPER_TRADE=false
 ENV AZURE_DEPLOYMENT=true
 ENV STATE_DIR=/state
+ENV TZ=Asia/Kolkata
 
 # Health check via HTTP endpoint
 HEALTHCHECK --interval=60s --timeout=10s --retries=3 \

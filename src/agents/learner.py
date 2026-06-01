@@ -14,6 +14,7 @@ import logging
 import json
 import os
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from typing import Optional
 
 import yaml
@@ -22,6 +23,8 @@ import numpy as np
 from src.data.knowledge_base import KnowledgeBase
 
 logger = logging.getLogger(__name__)
+
+IST = ZoneInfo("Asia/Kolkata")
 
 
 class StrategyParams:
@@ -61,7 +64,7 @@ class StrategyParams:
             "new_value": new_value,
             "change_pct": ((new_value - old_value) / old_value * 100) if old_value else 0,
             "reason": reason,
-            "proposed_at": datetime.now().isoformat(),
+            "proposed_at": datetime.now(IST).isoformat(),
             "status": "pending",  # pending, approved, rejected
         }
         self.history.append(proposal)
@@ -158,7 +161,7 @@ class Learner:
         End-of-day review. Stores daily snapshot and checks for patterns.
         """
         # Store market snapshot
-        today = datetime.now().strftime("%Y-%m-%d")
+        today = datetime.now(IST).strftime("%Y-%m-%d")
         self.kb.store_market_snapshot(
             date=today,
             regime=market_data.get("regime", "unknown"),
@@ -389,8 +392,8 @@ Respond in JSON:
         This feeds into the human review process.
         """
         report = {
-            "period": datetime.now().strftime("%B %Y"),
-            "generated_at": datetime.now().isoformat(),
+            "period": datetime.now(IST).strftime("%B %Y"),
+            "generated_at": datetime.now(IST).isoformat(),
             "knowledge_base_stats": self.kb.get_stats(),
             "strategy_performance": {},
             "regime_analysis": {},
