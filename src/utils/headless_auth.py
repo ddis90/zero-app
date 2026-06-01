@@ -220,8 +220,10 @@ class HeadlessAuth:
                         submit_btn.click()
                         logger.info("TOTP submit clicked")
 
-                    # Step 5: Handle authorize page
-                    time.sleep(3)
+                    # Step 5: Handle authorize page (React SPA)
+                    # Wait for the SPA to render authorize content
+                    page.wait_for_load_state("networkidle", timeout=15000)
+                    time.sleep(2)
                     logger.info(f"Post-TOTP URL: {page.url[:120]}")
 
                     # Check if callback server already got the token
@@ -229,24 +231,63 @@ class HeadlessAuth:
                         logger.info("Callback server captured request_token!")
                         return callback_captured["request_token"]
 
-                    # Click authorize button if on consent page
+                    # Handle authorize/consent page
                     if "request_token" not in page.url:
-                        # Log page HTML for debugging
-                        page_html = page.content()[:500]
-                        logger.info(f"Authorize page HTML: {page_html[:300]}")
+                        # Log rendered page body text (not HTML shell)
+                        body_text = page.inner_text("body")
+                        logger.info(f"Page body text: {body_text[:300]}")
 
-                        # Submit form via JavaScript (more reliable than button click)
+                        # Intercept responses to catch redirect URL
+                        redirect_url = {}
+                        def handle_response(response):
+                            url = response.url
+                            if "request_token" in url:
+                                from urllib.parse import urlparse, parse_qs
+                                parsed = urlparse(url)
+                                params = parse_qs(parsed.query)
+                                if params.get("request_token"):
+                                    redirect_url["token"] = params["request_token"][0]
+                            # Also check Location header for redirects
+                            loc = response.headers.get("location", "")
+                            if "request_token" in loc:
+                                from urllib.parse import urlparse, parse_qs
+                                parsed = urlparse(loc)
+                                params = parse_qs(parsed.query)
+                                if params.get("request_token"):
+                                    redirect_url["token"] = params["request_token"][0]
+
+                        page.on("response", handle_response)
+
+                        # Click the authorize button (triggers React event handlers)
                         try:
-                            with page.expect_navigation(timeout=15000):
-                                has_form = page.evaluate("!!document.querySelector('form')")
-                                if has_form:
-                                    page.evaluate("document.querySelector('form').submit()")
-                                    logger.info("Form submitted via JS")
-                                else:
-                                    page.click("button[type='submit']")
-                                    logger.info("Clicked submit button")
+                            # Wait for a clickable button to appear in the SPA
+                            auth_btn = page.wait_for_selector(
+                                "button[type='submit']:visible, input[type='submit']:visible",
+                                timeout=10000
+                            )
+                            if auth_btn:
+                                logger.info(f"Found authorize button: {auth_btn.inner_text()}")
+                                with page.expect_navigation(
+                                    url="**/callback**",
+                                    timeout=15000,
+                                    wait_until="commit"
+                                ):
+                                    auth_btn.click()
+                                logger.info("Authorize navigation completed")
                         except Exception as e:
-                            logger.warning(f"Navigation after authorize: {e}")
+                            logger.warning(f"Authorize navigation: {e}")
+                            # Fallback: try clicking any visible button
+                            try:
+                                page.click("button:visible", timeout=5000)
+                                logger.info("Fallback button click done")
+                                time.sleep(5)
+                            except Exception:
+                                pass
+
+                        # Check intercepted response
+                        if redirect_url.get("token"):
+                            logger.info("Got token from response intercept")
+                            return redirect_url["token"]
 
                     # Wait for callback server to receive the token
                     for _ in range(30):
