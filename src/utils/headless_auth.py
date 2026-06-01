@@ -181,29 +181,57 @@ class HeadlessAuth:
 
                 # Step 3: Wait for TOTP page
                 time.sleep(3)  # Wait for page transition
-                page.wait_for_selector("input[type='text'], input[type='number'], input.totp", timeout=15000)
+                # Kite shows a new text input for TOTP/PIN after credentials are accepted
+                totp_input = page.wait_for_selector(
+                    "input[label='External TOTP'], input[type='text'], input[type='number']",
+                    timeout=15000
+                )
 
                 # Step 4: Generate and enter TOTP
                 totp = pyotp.TOTP(self.totp_secret)
                 otp_code = totp.now()
                 logger.info(f"TOTP generated: {otp_code[:2]}****")
-                page.fill("input[type='text']", otp_code)
-                page.click("button[type='submit']")
-                logger.info("TOTP submitted")
+                # Clear any existing value and type the TOTP
+                totp_input.fill("")
+                totp_input.type(otp_code, delay=50)
+                logger.info("TOTP entered")
+                # Wait a moment for auto-submit, then click submit if still on page
+                time.sleep(2)
+                submit_btn = page.query_selector("button[type='submit']")
+                if submit_btn and submit_btn.is_visible():
+                    submit_btn.click()
+                    logger.info("TOTP submit button clicked")
 
                 # Step 5: Authorize app (Kite Connect shows consent page)
                 time.sleep(3)
                 logger.info(f"Post-TOTP URL: {page.url[:100]}")
-                try:
-                    authorize_btn = page.wait_for_selector(
-                        "button:has-text('Authorize'), input[type='submit'][value='Authorize'], a:has-text('Authorize')",
-                        timeout=10000
-                    )
-                    if authorize_btn:
-                        authorize_btn.click()
-                        logger.info("Authorize button clicked")
-                except Exception:
-                    logger.info("No authorize page detected, checking for redirect...")
+
+                # Log page content for debugging
+                page_text = page.inner_text("body")[:300] if page.query_selector("body") else ""
+                logger.info(f"Page content: {page_text[:200]}")
+
+                # Try multiple selectors for the authorize/consent button
+                authorize_clicked = False
+                for selector in [
+                    "button[type='submit']",
+                    "input[type='submit']",
+                    "button:has-text('Authorize')",
+                    "button:has-text('Allow')",
+                    "button:has-text('Continue')",
+                    "a.button",
+                ]:
+                    try:
+                        btn = page.query_selector(selector)
+                        if btn and btn.is_visible():
+                            btn.click()
+                            logger.info(f"Clicked authorize element: {selector}")
+                            authorize_clicked = True
+                            break
+                    except Exception:
+                        continue
+
+                if not authorize_clicked:
+                    logger.info("No clickable authorize element found")
 
                 # Step 6: Wait for redirect with request_token
                 # Poll for up to 15 seconds
