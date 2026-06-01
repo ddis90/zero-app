@@ -131,6 +131,10 @@ class HeadlessAuth:
                     return token_data
             except Exception as e:
                 logger.error(f"Login attempt {attempt} failed: {e}")
+                # Don't retry if CAPTCHA locked - it will only get worse
+                if "CAPTCHA" in str(e).upper():
+                    logger.error("CAPTCHA detected - stopping retries to avoid escalation")
+                    break
                 if attempt < max_retries:
                     time.sleep(35)  # Wait for new TOTP window (30s cycle)
 
@@ -139,7 +143,6 @@ class HeadlessAuth:
     def _get_request_token(self) -> str:
         """Use Kite's internal HTTP APIs to login and get request_token.
         
-        This avoids headless browser detection (CAPTCHA) by using direct API calls.
         Flow:
         1. POST /api/login → get request_id
         2. POST /api/twofa → complete 2FA with TOTP
@@ -150,12 +153,20 @@ class HeadlessAuth:
 
         session = requests.Session()
         session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Origin": "https://kite.zerodha.com",
+            "Referer": "https://kite.zerodha.com/connect/login?v=3&api_key=" + self.api_key,
             "X-Kite-Version": "3.0.0",
         })
 
-        # Step 1: Login with credentials
-        logger.info("Step 1: Logging in with credentials...")
+        # Step 1: Visit login page first to get session cookies
+        logger.info("Step 1: Getting session cookies...")
+        session.get(f"https://kite.zerodha.com/connect/login?v=3&api_key={self.api_key}")
+
+        # Step 2: Login with credentials
+        logger.info("Step 2: Logging in with credentials...")
         login_resp = session.post(
             "https://kite.zerodha.com/api/login",
             data={"user_id": self.user_id, "password": self.password},
@@ -164,15 +175,18 @@ class HeadlessAuth:
         logger.info(f"Login response status: {login_resp.status_code}, keys: {list(login_data.get('data', {}).keys())}")
 
         if login_data.get("status") != "success":
-            raise RuntimeError(f"Login failed: {login_data.get('message', login_data)}")
+            msg = login_data.get("message", str(login_data))
+            if "captcha" in str(login_data.get("data", {})).lower() or "captcha" in msg.lower():
+                raise RuntimeError(f"CAPTCHA required - account temporarily locked. Wait and retry later.")
+            raise RuntimeError(f"Login failed: {msg}")
 
         request_id = login_data["data"]["request_id"]
         logger.info(f"Got request_id: {request_id[:8]}...")
 
-        # Step 2: Submit TOTP (2FA)
+        # Step 3: Submit TOTP (2FA)
         totp = pyotp.TOTP(self.totp_secret)
         otp_code = totp.now()
-        logger.info(f"Step 2: Submitting TOTP: {otp_code[:2]}****")
+        logger.info(f"Step 3: Submitting TOTP: {otp_code[:2]}****")
 
         twofa_resp = session.post(
             "https://kite.zerodha.com/api/twofa",
@@ -189,10 +203,10 @@ class HeadlessAuth:
         if twofa_data.get("status") != "success":
             raise RuntimeError(f"2FA failed: {twofa_data.get('message', twofa_data)}")
 
-        # Step 3: Now visit the connect/login URL with authenticated session
+        # Step 4: Now visit the connect/login URL with authenticated session
         # This should redirect to our callback URL with request_token
         login_url = f"https://kite.zerodha.com/connect/login?v=3&api_key={self.api_key}"
-        logger.info("Step 3: Visiting connect/login to get authorize redirect...")
+        logger.info("Step 4: Visiting connect/login to get authorize redirect...")
 
         auth_resp = session.get(login_url, allow_redirects=False)
         logger.info(f"Auth response: status={auth_resp.status_code}, location={auth_resp.headers.get('Location', 'none')[:150]}")
