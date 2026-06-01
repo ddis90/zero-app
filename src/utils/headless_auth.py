@@ -180,8 +180,8 @@ class HeadlessAuth:
                 logger.info("Credentials submitted")
 
                 # Step 3: Wait for TOTP page
-                page.wait_for_selector("input[type='text']", timeout=15000)
-                time.sleep(2)  # Wait for page transition
+                time.sleep(3)  # Wait for page transition
+                page.wait_for_selector("input[type='text'], input[type='number'], input.totp", timeout=15000)
 
                 # Step 4: Generate and enter TOTP
                 totp = pyotp.TOTP(self.totp_secret)
@@ -191,7 +191,21 @@ class HeadlessAuth:
                 page.click("button[type='submit']")
                 logger.info("TOTP submitted")
 
-                # Step 5: Wait for redirect with request_token
+                # Step 5: Authorize app (Kite Connect shows consent page)
+                time.sleep(3)
+                logger.info(f"Post-TOTP URL: {page.url[:100]}")
+                try:
+                    authorize_btn = page.wait_for_selector(
+                        "button:has-text('Authorize'), input[type='submit'][value='Authorize'], a:has-text('Authorize')",
+                        timeout=10000
+                    )
+                    if authorize_btn:
+                        authorize_btn.click()
+                        logger.info("Authorize button clicked")
+                except Exception:
+                    logger.info("No authorize page detected, checking for redirect...")
+
+                # Step 6: Wait for redirect with request_token
                 # Poll for up to 15 seconds
                 for _ in range(30):
                     if captured_url.get("url"):
