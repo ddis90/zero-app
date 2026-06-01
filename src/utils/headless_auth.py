@@ -141,6 +141,7 @@ class HeadlessAuth:
 
     def _start_callback_server(self):
         """Start a local HTTP server to receive the Kite callback redirect."""
+        import socket
         import threading
         from http.server import HTTPServer, BaseHTTPRequestHandler
 
@@ -161,7 +162,11 @@ class HeadlessAuth:
             def log_message(self, format, *args):
                 pass  # Suppress server logs
 
-        server = HTTPServer(("127.0.0.1", 5000), CallbackHandler)
+        class ReusableHTTPServer(HTTPServer):
+            allow_reuse_address = True
+            allow_reuse_port = True
+
+        server = ReusableHTTPServer(("127.0.0.1", 5000), CallbackHandler)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         return server, captured
@@ -226,13 +231,22 @@ class HeadlessAuth:
 
                     # Click authorize button if on consent page
                     if "request_token" not in page.url:
+                        # Log page HTML for debugging
+                        page_html = page.content()[:500]
+                        logger.info(f"Authorize page HTML: {page_html[:300]}")
+
+                        # Submit form via JavaScript (more reliable than button click)
                         try:
-                            btn = page.query_selector("button[type='submit']")
-                            if btn and btn.is_visible():
-                                btn.click()
-                                logger.info("Clicked authorize button")
+                            with page.expect_navigation(timeout=15000):
+                                has_form = page.evaluate("!!document.querySelector('form')")
+                                if has_form:
+                                    page.evaluate("document.querySelector('form').submit()")
+                                    logger.info("Form submitted via JS")
+                                else:
+                                    page.click("button[type='submit']")
+                                    logger.info("Clicked submit button")
                         except Exception as e:
-                            logger.warning(f"Authorize click failed: {e}")
+                            logger.warning(f"Navigation after authorize: {e}")
 
                     # Wait for callback server to receive the token
                     for _ in range(30):
@@ -252,6 +266,7 @@ class HeadlessAuth:
                     if token:
                         return token
 
+                    logger.info(f"Final page URL: {page.url[:200]}")
                     raise RuntimeError(f"No request_token received. Final URL: {page.url[:150]}")
 
                 except Exception as e:
