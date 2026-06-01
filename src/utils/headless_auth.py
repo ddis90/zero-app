@@ -1,17 +1,14 @@
 """
 Headless Kite Connect Authentication.
-Uses Playwright (headless Chromium) to auto-login to Zerodha without a visible browser.
+Uses Kite's internal HTTP APIs to auto-login to Zerodha without a visible browser.
 Designed for cloud deployment where no GUI is available.
 
 Flow:
-1. Navigate to Kite login
-2. Enter user ID + password
-3. Auto-fill TOTP
-4. Capture redirect with request_token
-5. Generate access token via API
-6. Save token to persistent storage
-
-Requires: playwright install chromium
+1. POST /api/login with credentials
+2. POST /api/twofa with TOTP
+3. GET connect/login URL with session cookies → follow redirect for request_token
+4. Generate access token via Kite Connect API
+5. Save token to persistent storage
 """
 
 import logging
@@ -139,187 +136,123 @@ class HeadlessAuth:
 
         raise RuntimeError(f"Headless login failed after {max_retries} attempts")
 
-    def _start_callback_server(self):
-        """Start a local HTTP server to receive the Kite callback redirect."""
-        import socket
-        import threading
-        from http.server import HTTPServer, BaseHTTPRequestHandler
-
-        captured = {}
-
-        class CallbackHandler(BaseHTTPRequestHandler):
-            def do_GET(self):
-                from urllib.parse import urlparse, parse_qs
-                parsed = urlparse(self.path)
-                params = parse_qs(parsed.query)
-                if "request_token" in params:
-                    captured["request_token"] = params["request_token"][0]
-                self.send_response(200)
-                self.send_header("Content-Type", "text/html")
-                self.end_headers()
-                self.wfile.write(b"<html><body>Login successful. You can close this window.</body></html>")
-
-            def log_message(self, format, *args):
-                pass  # Suppress server logs
-
-        class ReusableHTTPServer(HTTPServer):
-            allow_reuse_address = True
-            allow_reuse_port = True
-
-        server = ReusableHTTPServer(("127.0.0.1", 5000), CallbackHandler)
-        thread = threading.Thread(target=server.serve_forever, daemon=True)
-        thread.start()
-        return server, captured
-
     def _get_request_token(self) -> str:
-        """Use Playwright to navigate login flow and capture request_token."""
-        from playwright.sync_api import sync_playwright
+        """Use Kite's internal HTTP APIs to login and get request_token.
+        
+        This avoids headless browser detection (CAPTCHA) by using direct API calls.
+        Flow:
+        1. POST /api/login → get request_id
+        2. POST /api/twofa → complete 2FA with TOTP
+        3. GET connect/login URL with session cookies → follow redirect to get request_token
+        """
+        import requests
+        from urllib.parse import urlparse, parse_qs
 
+        session = requests.Session()
+        session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "X-Kite-Version": "3.0.0",
+        })
+
+        # Step 1: Login with credentials
+        logger.info("Step 1: Logging in with credentials...")
+        login_resp = session.post(
+            "https://kite.zerodha.com/api/login",
+            data={"user_id": self.user_id, "password": self.password},
+        )
+        login_data = login_resp.json()
+        logger.info(f"Login response status: {login_resp.status_code}, keys: {list(login_data.get('data', {}).keys())}")
+
+        if login_data.get("status") != "success":
+            raise RuntimeError(f"Login failed: {login_data.get('message', login_data)}")
+
+        request_id = login_data["data"]["request_id"]
+        logger.info(f"Got request_id: {request_id[:8]}...")
+
+        # Step 2: Submit TOTP (2FA)
+        totp = pyotp.TOTP(self.totp_secret)
+        otp_code = totp.now()
+        logger.info(f"Step 2: Submitting TOTP: {otp_code[:2]}****")
+
+        twofa_resp = session.post(
+            "https://kite.zerodha.com/api/twofa",
+            data={
+                "user_id": self.user_id,
+                "request_id": request_id,
+                "twofa_value": otp_code,
+                "twofa_type": "totp",
+            },
+        )
+        twofa_data = twofa_resp.json()
+        logger.info(f"2FA response status: {twofa_resp.status_code}, status: {twofa_data.get('status')}")
+
+        if twofa_data.get("status") != "success":
+            raise RuntimeError(f"2FA failed: {twofa_data.get('message', twofa_data)}")
+
+        # Step 3: Now visit the connect/login URL with authenticated session
+        # This should redirect to our callback URL with request_token
         login_url = f"https://kite.zerodha.com/connect/login?v=3&api_key={self.api_key}"
+        logger.info("Step 3: Visiting connect/login to get authorize redirect...")
 
-        # Start local callback server to receive the redirect
-        callback_server, callback_captured = self._start_callback_server()
-        logger.info("Callback server started on 127.0.0.1:5000")
+        auth_resp = session.get(login_url, allow_redirects=False)
+        logger.info(f"Auth response: status={auth_resp.status_code}, location={auth_resp.headers.get('Location', 'none')[:150]}")
 
-        try:
-            with sync_playwright() as p:
-                browser = p.chromium.launch(headless=True)
-                context = browser.new_context(
-                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-                )
-                page = context.new_page()
+        # Follow redirects manually to catch the one with request_token
+        max_redirects = 10
+        for i in range(max_redirects):
+            if auth_resp.status_code in (301, 302, 303, 307, 308):
+                redirect_loc = auth_resp.headers.get("Location", "")
+                logger.info(f"Redirect {i+1}: {redirect_loc[:200]}")
 
-                try:
-                    # Step 1: Navigate to login
-                    page.goto(login_url, wait_until="networkidle", timeout=30000)
-                    logger.info("Login page loaded")
-
-                    # Step 2: Enter User ID and password
-                    page.fill("input[type='text']", self.user_id)
-                    page.fill("input[type='password']", self.password)
-                    page.click("button[type='submit']")
-                    logger.info("Credentials submitted")
-
-                    # Step 3: Wait for TOTP page
-                    time.sleep(3)
-                    totp_input = page.wait_for_selector(
-                        "input[label='External TOTP'], input[type='text'], input[type='number']",
-                        timeout=15000
-                    )
-
-                    # Step 4: Generate and enter TOTP
-                    totp = pyotp.TOTP(self.totp_secret)
-                    otp_code = totp.now()
-                    logger.info(f"TOTP generated: {otp_code[:2]}****")
-                    totp_input.fill("")
-                    totp_input.type(otp_code, delay=50)
-                    logger.info("TOTP entered")
-                    time.sleep(2)
-                    submit_btn = page.query_selector("button[type='submit']")
-                    if submit_btn and submit_btn.is_visible():
-                        submit_btn.click()
-                        logger.info("TOTP submit clicked")
-
-                    # Step 5: Handle authorize page (React SPA)
-                    # Wait for the SPA to render authorize content
-                    page.wait_for_load_state("networkidle", timeout=15000)
-                    time.sleep(2)
-                    logger.info(f"Post-TOTP URL: {page.url[:120]}")
-
-                    # Check if callback server already got the token
-                    if callback_captured.get("request_token"):
-                        logger.info("Callback server captured request_token!")
-                        return callback_captured["request_token"]
-
-                    # Handle authorize/consent page
-                    if "request_token" not in page.url:
-                        # Log rendered page body text (not HTML shell)
-                        body_text = page.inner_text("body")
-                        logger.info(f"Page body text: {body_text[:300]}")
-
-                        # Intercept responses to catch redirect URL
-                        redirect_url = {}
-                        def handle_response(response):
-                            url = response.url
-                            if "request_token" in url:
-                                from urllib.parse import urlparse, parse_qs
-                                parsed = urlparse(url)
-                                params = parse_qs(parsed.query)
-                                if params.get("request_token"):
-                                    redirect_url["token"] = params["request_token"][0]
-                            # Also check Location header for redirects
-                            loc = response.headers.get("location", "")
-                            if "request_token" in loc:
-                                from urllib.parse import urlparse, parse_qs
-                                parsed = urlparse(loc)
-                                params = parse_qs(parsed.query)
-                                if params.get("request_token"):
-                                    redirect_url["token"] = params["request_token"][0]
-
-                        page.on("response", handle_response)
-
-                        # Click the authorize button (triggers React event handlers)
-                        try:
-                            # Wait for a clickable button to appear in the SPA
-                            auth_btn = page.wait_for_selector(
-                                "button[type='submit']:visible, input[type='submit']:visible",
-                                timeout=10000
-                            )
-                            if auth_btn:
-                                logger.info(f"Found authorize button: {auth_btn.inner_text()}")
-                                with page.expect_navigation(
-                                    url="**/callback**",
-                                    timeout=15000,
-                                    wait_until="commit"
-                                ):
-                                    auth_btn.click()
-                                logger.info("Authorize navigation completed")
-                        except Exception as e:
-                            logger.warning(f"Authorize navigation: {e}")
-                            # Fallback: try clicking any visible button
-                            try:
-                                page.click("button:visible", timeout=5000)
-                                logger.info("Fallback button click done")
-                                time.sleep(5)
-                            except Exception:
-                                pass
-
-                        # Check intercepted response
-                        if redirect_url.get("token"):
-                            logger.info("Got token from response intercept")
-                            return redirect_url["token"]
-
-                    # Wait for callback server to receive the token
-                    for _ in range(30):
-                        if callback_captured.get("request_token"):
-                            break
-                        time.sleep(0.5)
-
-                    if callback_captured.get("request_token"):
-                        logger.info("Login redirect received by callback server")
-                        return callback_captured["request_token"]
-
-                    # Fallback: check page URL
-                    from urllib.parse import urlparse, parse_qs
-                    parsed = urlparse(page.url)
+                if "request_token" in redirect_loc:
+                    parsed = urlparse(redirect_loc)
                     params = parse_qs(parsed.query)
                     token = params.get("request_token", [None])[0]
                     if token:
+                        logger.info("Got request_token from redirect!")
                         return token
 
-                    logger.info(f"Final page URL: {page.url[:200]}")
-                    raise RuntimeError(f"No request_token received. Final URL: {page.url[:150]}")
+                # Follow the redirect
+                auth_resp = session.get(redirect_loc, allow_redirects=False)
+            else:
+                break
 
-                except Exception as e:
-                    screenshot_path = "logs/login_error.png"
-                    os.makedirs("logs", exist_ok=True)
-                    page.screenshot(path=screenshot_path)
-                    logger.error(f"Login error (screenshot: {screenshot_path}): {e}")
-                    raise
-                finally:
-                    browser.close()
-        finally:
-            callback_server.shutdown()
+        # Check final URL in case it landed on callback with token
+        final_url = auth_resp.url if hasattr(auth_resp, 'url') else ""
+        if "request_token" in final_url:
+            parsed = urlparse(final_url)
+            params = parse_qs(parsed.query)
+            token = params.get("request_token", [None])[0]
+            if token:
+                return token
+
+        # If we're on an authorize page, try POSTing to authorize endpoint
+        if auth_resp.status_code == 200 and "authorize" in auth_resp.text.lower():
+            logger.info("On authorize page, attempting to POST authorize...")
+            # Extract any hidden form fields
+            import re
+            action_match = re.search(r'action="([^"]+)"', auth_resp.text)
+            authorize_url = action_match.group(1) if action_match else "https://kite.zerodha.com/connect/authorize"
+
+            authorize_resp = session.post(
+                authorize_url if authorize_url.startswith("http") else f"https://kite.zerodha.com{authorize_url}",
+                data={"api_key": self.api_key},
+                allow_redirects=False,
+            )
+            logger.info(f"Authorize POST: status={authorize_resp.status_code}, location={authorize_resp.headers.get('Location', 'none')[:150]}")
+
+            if authorize_resp.status_code in (301, 302, 303, 307, 308):
+                redirect_loc = authorize_resp.headers.get("Location", "")
+                if "request_token" in redirect_loc:
+                    parsed = urlparse(redirect_loc)
+                    params = parse_qs(parsed.query)
+                    token = params.get("request_token", [None])[0]
+                    if token:
+                        logger.info("Got request_token from authorize POST redirect!")
+                        return token
+
+        logger.error(f"Failed to get request_token. Final status: {auth_resp.status_code}, body: {auth_resp.text[:300]}")
+        raise RuntimeError(f"No request_token received after HTTP login flow")
 
     def _generate_access_token(self, request_token: str) -> dict:
         """Exchange request_token for access_token via Kite API."""
