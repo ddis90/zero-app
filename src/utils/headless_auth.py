@@ -153,32 +153,51 @@ class HeadlessAuth:
             )
             page = context.new_page()
 
+            # Capture redirect URL via request interception (works even if target unreachable)
+            captured_url = {}
+
+            def handle_request(route):
+                url = route.request.url
+                if "callback" in url and "request_token" in url:
+                    captured_url["url"] = url
+                    route.abort()
+                else:
+                    route.continue_()
+
+            page.route("**/*callback*", handle_request)
+
             try:
                 # Step 1: Navigate to login
                 page.goto(login_url, wait_until="networkidle", timeout=30000)
-                logger.debug("Login page loaded")
+                logger.info("Login page loaded")
 
                 # Step 2: Enter User ID
                 page.fill("input[type='text']", self.user_id)
                 page.fill("input[type='password']", self.password)
                 page.click("button[type='submit']")
-                logger.debug("Credentials submitted")
+                logger.info("Credentials submitted")
 
                 # Step 3: Wait for TOTP page
-                page.wait_for_selector("input[type='text']", timeout=10000)
-                time.sleep(1)  # Brief pause for page transition
+                page.wait_for_selector("input[type='text']", timeout=15000)
+                time.sleep(2)  # Wait for page transition
 
                 # Step 4: Generate and enter TOTP
                 totp = pyotp.TOTP(self.totp_secret)
                 otp_code = totp.now()
+                logger.info(f"TOTP generated: {otp_code[:2]}****")
                 page.fill("input[type='text']", otp_code)
                 page.click("button[type='submit']")
-                logger.debug("TOTP submitted")
+                logger.info("TOTP submitted")
 
-                # Step 5: Wait for redirect to callback URL
-                page.wait_for_url("**/callback**", timeout=15000)
-                callback_url = page.url
-                logger.debug(f"Callback URL captured: {callback_url[:80]}...")
+                # Step 5: Wait for redirect (captured via route interception)
+                # Also try wait_for_url as fallback
+                try:
+                    page.wait_for_url("**/callback**", timeout=15000)
+                except Exception:
+                    pass  # May fail if route aborted the request
+
+                callback_url = captured_url.get("url") or page.url
+                logger.info(f"Callback URL captured: {callback_url[:80]}...")
 
                 # Extract request_token from URL
                 from urllib.parse import urlparse, parse_qs

@@ -126,12 +126,14 @@ class TradingOrchestrator:
             is_cloud = os.getenv("AZURE_DEPLOYMENT", "").lower() == "true"
 
             if is_cloud:
-                # In cloud: use HeadlessAuth which reads from STATE_DIR/.kite_token
-                # The ca-zero-auth job runs at 8:40 AM and saves the token there
+                # In cloud: use HeadlessAuth - try saved token first, then login directly
                 headless = HeadlessAuth()
                 token_data = headless.ensure_authenticated()
                 if not token_data:
-                    logger.error("Cloud auth failed - no valid token from headless_auth")
+                    logger.warning("No saved token, attempting headless login directly...")
+                    token_data = headless.login(max_retries=3)
+                if not token_data:
+                    logger.error("Cloud auth failed - headless login failed")
                     return False
                 from kiteconnect import KiteConnect as KC
                 kite = KC(api_key=token_data["api_key"])
