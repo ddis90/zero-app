@@ -139,133 +139,131 @@ class HeadlessAuth:
 
         raise RuntimeError(f"Headless login failed after {max_retries} attempts")
 
+    def _start_callback_server(self):
+        """Start a local HTTP server to receive the Kite callback redirect."""
+        import threading
+        from http.server import HTTPServer, BaseHTTPRequestHandler
+
+        captured = {}
+
+        class CallbackHandler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                from urllib.parse import urlparse, parse_qs
+                parsed = urlparse(self.path)
+                params = parse_qs(parsed.query)
+                if "request_token" in params:
+                    captured["request_token"] = params["request_token"][0]
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html")
+                self.end_headers()
+                self.wfile.write(b"<html><body>Login successful. You can close this window.</body></html>")
+
+            def log_message(self, format, *args):
+                pass  # Suppress server logs
+
+        server = HTTPServer(("127.0.0.1", 5000), CallbackHandler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        return server, captured
+
     def _get_request_token(self) -> str:
         """Use Playwright to navigate login flow and capture request_token."""
         from playwright.sync_api import sync_playwright
 
         login_url = f"https://kite.zerodha.com/connect/login?v=3&api_key={self.api_key}"
-        request_token = None
 
-        with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
-            context = browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-            )
-            page = context.new_page()
+        # Start local callback server to receive the redirect
+        callback_server, callback_captured = self._start_callback_server()
+        logger.info("Callback server started on 127.0.0.1:5000")
 
-            # Passive listener: capture any URL containing request_token
-            captured_url = {}
-
-            def on_request(request):
-                if "request_token" in request.url:
-                    captured_url["url"] = request.url
-                    logger.info(f"Captured request_token URL: {request.url[:100]}...")
-
-            def on_response(response):
-                # Capture 3xx redirect locations that contain request_token
-                if response.status in (301, 302, 303, 307, 308):
-                    location = response.headers.get("location", "")
-                    if "request_token" in location:
-                        captured_url["url"] = location
-                        logger.info(f"Captured redirect with request_token: {location[:100]}...")
-
-            page.on("request", on_request)
-            page.on("response", on_response)
-
-            try:
-                # Step 1: Navigate to login
-                page.goto(login_url, wait_until="networkidle", timeout=30000)
-                logger.info("Login page loaded")
-
-                # Step 2: Enter User ID
-                page.fill("input[type='text']", self.user_id)
-                page.fill("input[type='password']", self.password)
-                page.click("button[type='submit']")
-                logger.info("Credentials submitted")
-
-                # Step 3: Wait for TOTP page
-                time.sleep(3)
-                totp_input = page.wait_for_selector(
-                    "input[label='External TOTP'], input[type='text'], input[type='number']",
-                    timeout=15000
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                context = browser.new_context(
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
                 )
+                page = context.new_page()
 
-                # Step 4: Generate and enter TOTP
-                totp = pyotp.TOTP(self.totp_secret)
-                otp_code = totp.now()
-                logger.info(f"TOTP generated: {otp_code[:2]}****")
-                totp_input.fill("")
-                totp_input.type(otp_code, delay=50)
-                logger.info("TOTP entered")
-                time.sleep(2)
-                submit_btn = page.query_selector("button[type='submit']")
-                if submit_btn and submit_btn.is_visible():
-                    submit_btn.click()
-                    logger.info("TOTP submit clicked")
+                try:
+                    # Step 1: Navigate to login
+                    page.goto(login_url, wait_until="networkidle", timeout=30000)
+                    logger.info("Login page loaded")
 
-                # Step 5: Handle authorize page if present
-                time.sleep(3)
-                current_url = page.url
-                logger.info(f"Post-TOTP URL: {current_url[:120]}")
+                    # Step 2: Enter User ID and password
+                    page.fill("input[type='text']", self.user_id)
+                    page.fill("input[type='password']", self.password)
+                    page.click("button[type='submit']")
+                    logger.info("Credentials submitted")
 
-                # Check if already redirected with request_token
-                if "request_token" in current_url:
-                    captured_url["url"] = current_url
-                elif not captured_url.get("url"):
-                    # We're on the authorize page - click authorize
-                    page_text = page.inner_text("body")[:300] if page.query_selector("body") else ""
-                    logger.info(f"Page content: {page_text[:200]}")
+                    # Step 3: Wait for TOTP page
+                    time.sleep(3)
+                    totp_input = page.wait_for_selector(
+                        "input[label='External TOTP'], input[type='text'], input[type='number']",
+                        timeout=15000
+                    )
 
-                    # Click authorize/submit button
-                    try:
-                        btn = page.query_selector("button[type='submit']")
-                        if btn and btn.is_visible():
-                            btn.click()
-                            logger.info("Clicked authorize button")
-                    except Exception as e:
-                        logger.warning(f"Authorize click failed: {e}")
+                    # Step 4: Generate and enter TOTP
+                    totp = pyotp.TOTP(self.totp_secret)
+                    otp_code = totp.now()
+                    logger.info(f"TOTP generated: {otp_code[:2]}****")
+                    totp_input.fill("")
+                    totp_input.type(otp_code, delay=50)
+                    logger.info("TOTP entered")
+                    time.sleep(2)
+                    submit_btn = page.query_selector("button[type='submit']")
+                    if submit_btn and submit_btn.is_visible():
+                        submit_btn.click()
+                        logger.info("TOTP submit clicked")
 
-                    # Wait for redirect after authorize
-                    try:
-                        page.wait_for_url("**/callback*", timeout=15000)
-                    except Exception:
-                        pass
+                    # Step 5: Handle authorize page
+                    time.sleep(3)
+                    logger.info(f"Post-TOTP URL: {page.url[:120]}")
 
-                    # Also check page.url after navigation attempt
-                    if "request_token" in page.url:
-                        captured_url["url"] = page.url
+                    # Check if callback server already got the token
+                    if callback_captured.get("request_token"):
+                        logger.info("Callback server captured request_token!")
+                        return callback_captured["request_token"]
 
-                # Poll briefly for captured URL
-                for _ in range(20):
-                    if captured_url.get("url"):
-                        break
-                    time.sleep(0.5)
+                    # Click authorize button if on consent page
+                    if "request_token" not in page.url:
+                        try:
+                            btn = page.query_selector("button[type='submit']")
+                            if btn and btn.is_visible():
+                                btn.click()
+                                logger.info("Clicked authorize button")
+                        except Exception as e:
+                            logger.warning(f"Authorize click failed: {e}")
 
-                callback_url = captured_url.get("url", "")
-                if not callback_url:
-                    callback_url = page.url
-                logger.info(f"Final URL: {callback_url[:120]}")
+                    # Wait for callback server to receive the token
+                    for _ in range(30):
+                        if callback_captured.get("request_token"):
+                            break
+                        time.sleep(0.5)
 
-                # Extract request_token from URL
-                from urllib.parse import urlparse, parse_qs
-                parsed = urlparse(callback_url)
-                params = parse_qs(parsed.query)
-                request_token = params.get("request_token", [None])[0]
+                    if callback_captured.get("request_token"):
+                        logger.info("Login redirect received by callback server")
+                        return callback_captured["request_token"]
 
-                if not request_token:
-                    raise RuntimeError(f"No request_token in callback URL: {callback_url}")
+                    # Fallback: check page URL
+                    from urllib.parse import urlparse, parse_qs
+                    parsed = urlparse(page.url)
+                    params = parse_qs(parsed.query)
+                    token = params.get("request_token", [None])[0]
+                    if token:
+                        return token
 
-            except Exception as e:
-                # Take screenshot for debugging
-                screenshot_path = "logs/login_error.png"
-                os.makedirs("logs", exist_ok=True)
-                page.screenshot(path=screenshot_path)
-                logger.error(f"Login error (screenshot: {screenshot_path}): {e}")
-                raise
-            finally:
-                browser.close()
+                    raise RuntimeError(f"No request_token received. Final URL: {page.url[:150]}")
 
-        return request_token
+                except Exception as e:
+                    screenshot_path = "logs/login_error.png"
+                    os.makedirs("logs", exist_ok=True)
+                    page.screenshot(path=screenshot_path)
+                    logger.error(f"Login error (screenshot: {screenshot_path}): {e}")
+                    raise
+                finally:
+                    browser.close()
+        finally:
+            callback_server.shutdown()
 
     def _generate_access_token(self, request_token: str) -> dict:
         """Exchange request_token for access_token via Kite API."""
