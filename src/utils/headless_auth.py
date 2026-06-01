@@ -135,7 +135,7 @@ class HeadlessAuth:
             except Exception as e:
                 logger.error(f"Login attempt {attempt} failed: {e}")
                 if attempt < max_retries:
-                    time.sleep(5)  # Wait before retry
+                    time.sleep(35)  # Wait for new TOTP window (30s cycle)
 
         raise RuntimeError(f"Headless login failed after {max_retries} attempts")
 
@@ -153,18 +153,20 @@ class HeadlessAuth:
             )
             page = context.new_page()
 
-            # Capture redirect URL via request interception (works even if target unreachable)
+            # Capture redirect URL via request interception
+            # Intercept ALL requests and check for request_token in URL
             captured_url = {}
 
             def handle_request(route):
                 url = route.request.url
-                if "callback" in url and "request_token" in url:
+                if "request_token" in url:
                     captured_url["url"] = url
+                    logger.info(f"Intercepted redirect with request_token: {url[:80]}...")
                     route.abort()
                 else:
                     route.continue_()
 
-            page.route("**/*callback*", handle_request)
+            page.route("**/*", handle_request)
 
             try:
                 # Step 1: Navigate to login
@@ -189,14 +191,17 @@ class HeadlessAuth:
                 page.click("button[type='submit']")
                 logger.info("TOTP submitted")
 
-                # Step 5: Wait for redirect (captured via route interception)
-                # Also try wait_for_url as fallback
-                try:
-                    page.wait_for_url("**/callback**", timeout=15000)
-                except Exception:
-                    pass  # May fail if route aborted the request
+                # Step 5: Wait for redirect with request_token
+                # Poll for up to 15 seconds
+                for _ in range(30):
+                    if captured_url.get("url"):
+                        break
+                    time.sleep(0.5)
 
-                callback_url = captured_url.get("url") or page.url
+                callback_url = captured_url.get("url", "")
+                if not callback_url:
+                    # Fallback: check current page URL
+                    callback_url = page.url
                 logger.info(f"Callback URL captured: {callback_url[:80]}...")
 
                 # Extract request_token from URL
