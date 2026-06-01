@@ -153,20 +153,24 @@ class HeadlessAuth:
             )
             page = context.new_page()
 
-            # Capture redirect URL via request interception
-            # Intercept ALL requests and check for request_token in URL
+            # Passive listener: capture any URL containing request_token
             captured_url = {}
 
-            def handle_request(route):
-                url = route.request.url
-                if "request_token" in url:
-                    captured_url["url"] = url
-                    logger.info(f"Intercepted redirect with request_token: {url[:80]}...")
-                    route.abort()
-                else:
-                    route.continue_()
+            def on_request(request):
+                if "request_token" in request.url:
+                    captured_url["url"] = request.url
+                    logger.info(f"Captured request_token URL: {request.url[:100]}...")
 
-            page.route("**/*", handle_request)
+            def on_response(response):
+                # Capture 3xx redirect locations that contain request_token
+                if response.status in (301, 302, 303, 307, 308):
+                    location = response.headers.get("location", "")
+                    if "request_token" in location:
+                        captured_url["url"] = location
+                        logger.info(f"Captured redirect with request_token: {location[:100]}...")
+
+            page.on("request", on_request)
+            page.on("response", on_response)
 
             try:
                 # Step 1: Navigate to login
@@ -180,8 +184,7 @@ class HeadlessAuth:
                 logger.info("Credentials submitted")
 
                 # Step 3: Wait for TOTP page
-                time.sleep(3)  # Wait for page transition
-                # Kite shows a new text input for TOTP/PIN after credentials are accepted
+                time.sleep(3)
                 totp_input = page.wait_for_selector(
                     "input[label='External TOTP'], input[type='text'], input[type='number']",
                     timeout=15000
@@ -191,60 +194,57 @@ class HeadlessAuth:
                 totp = pyotp.TOTP(self.totp_secret)
                 otp_code = totp.now()
                 logger.info(f"TOTP generated: {otp_code[:2]}****")
-                # Clear any existing value and type the TOTP
                 totp_input.fill("")
                 totp_input.type(otp_code, delay=50)
                 logger.info("TOTP entered")
-                # Wait a moment for auto-submit, then click submit if still on page
                 time.sleep(2)
                 submit_btn = page.query_selector("button[type='submit']")
                 if submit_btn and submit_btn.is_visible():
                     submit_btn.click()
-                    logger.info("TOTP submit button clicked")
+                    logger.info("TOTP submit clicked")
 
-                # Step 5: Authorize app (Kite Connect shows consent page)
+                # Step 5: Handle authorize page if present
                 time.sleep(3)
-                logger.info(f"Post-TOTP URL: {page.url[:100]}")
+                current_url = page.url
+                logger.info(f"Post-TOTP URL: {current_url[:120]}")
 
-                # Log page content for debugging
-                page_text = page.inner_text("body")[:300] if page.query_selector("body") else ""
-                logger.info(f"Page content: {page_text[:200]}")
+                # Check if already redirected with request_token
+                if "request_token" in current_url:
+                    captured_url["url"] = current_url
+                elif not captured_url.get("url"):
+                    # We're on the authorize page - click authorize
+                    page_text = page.inner_text("body")[:300] if page.query_selector("body") else ""
+                    logger.info(f"Page content: {page_text[:200]}")
 
-                # Try multiple selectors for the authorize/consent button
-                authorize_clicked = False
-                for selector in [
-                    "button[type='submit']",
-                    "input[type='submit']",
-                    "button:has-text('Authorize')",
-                    "button:has-text('Allow')",
-                    "button:has-text('Continue')",
-                    "a.button",
-                ]:
+                    # Click authorize/submit button
                     try:
-                        btn = page.query_selector(selector)
+                        btn = page.query_selector("button[type='submit']")
                         if btn and btn.is_visible():
                             btn.click()
-                            logger.info(f"Clicked authorize element: {selector}")
-                            authorize_clicked = True
-                            break
+                            logger.info("Clicked authorize button")
+                    except Exception as e:
+                        logger.warning(f"Authorize click failed: {e}")
+
+                    # Wait for redirect after authorize
+                    try:
+                        page.wait_for_url("**/callback*", timeout=15000)
                     except Exception:
-                        continue
+                        pass
 
-                if not authorize_clicked:
-                    logger.info("No clickable authorize element found")
+                    # Also check page.url after navigation attempt
+                    if "request_token" in page.url:
+                        captured_url["url"] = page.url
 
-                # Step 6: Wait for redirect with request_token
-                # Poll for up to 15 seconds
-                for _ in range(30):
+                # Poll briefly for captured URL
+                for _ in range(20):
                     if captured_url.get("url"):
                         break
                     time.sleep(0.5)
 
                 callback_url = captured_url.get("url", "")
                 if not callback_url:
-                    # Fallback: check current page URL
                     callback_url = page.url
-                logger.info(f"Callback URL captured: {callback_url[:80]}...")
+                logger.info(f"Final URL: {callback_url[:120]}")
 
                 # Extract request_token from URL
                 from urllib.parse import urlparse, parse_qs
