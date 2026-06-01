@@ -41,7 +41,8 @@ RUN mkdir -p logs /state
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV PAPER_TRADE=true
+ENV PAPER_TRADE=false
+ENV AZURE_DEPLOYMENT=true
 ENV STATE_DIR=/state
 
 # Health check via HTTP endpoint

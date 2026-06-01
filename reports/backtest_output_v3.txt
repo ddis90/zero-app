@@ -1,0 +1,491 @@
+﻿python : 2026-05-31 22:50:17,911 | backtest                  | INFO    | 
+Backtest period: May 2024 ΓåÆ May 2026
+At line:1 char:229
++ ... NG="utf-8"; python -m src.backtest.run_backtest --capital 200000 --ye ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (2026-05-31 22:5...24 ΓåÆ May 2026 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.
+3568.0_x64__qbz5n2kfra8p0\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.
+3568.0_x64__qbz5n2kfra8p0\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' in 
+position 90: character maps to <undefined>
+Call stack:
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\run_backtest.py", 
+line 212, in <module>
+    main()
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\run_backtest.py", 
+line 198, in main
+    run_backtest(
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\run_backtest.py", 
+line 82, in run_backtest
+    logger.info(f"Backtest period: {start_date.strftime('%b %Y')} ΓåÆ 
+{end_date.strftime('%b %Y')}")
+Message: 'Backtest period: May 2024 ΓåÆ May 2026'
+Arguments: ()
+2026-05-31 22:50:17,914 | backtest                  | INFO    | No cached 
+data. Will download from source (this may take a few minutes).
+2026-05-31 22:50:17,914 | src.backtest.walk_forward | INFO    | Generated 6 
+walk-forward windows
+2026-05-31 22:50:17,914 | src.backtest.walk_forward | INFO    | Loading 
+historical data...
+C:\Users\A962251\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qb
+z5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\requests\__init__
+.py:113: RequestsDependencyWarning: urllib3 (2.6.3) or chardet 
+(7.4.3)/charset_normalizer (3.4.4) doesn't match a supported version!
+  warnings.warn(
+2026-05-31 22:50:19,554 | yfinance                  | ERROR   | HTTP Error 
+404: {"quoteSummary":{"result":null,"error":{"code":"Not 
+Found","description":"Quote not found for symbol: NIFTY 50.NS"}}}
+2026-05-31 22:50:19,678 | yfinance                  | ERROR   | $NIFTY 50.NS: 
+possibly delisted; no timezone found
+2026-05-31 22:50:21,548 | yfinance                  | ERROR   | HTTP Error 
+404: {"quoteSummary":{"result":null,"error":{"code":"Not 
+Found","description":"Quote not found for symbol: NIFTY BANK.NS"}}}
+2026-05-31 22:50:21,663 | yfinance                  | ERROR   | $NIFTY 
+BANK.NS: possibly delisted; no timezone found
+2026-05-31 22:50:22,217 | yfinance                  | ERROR   | $INDIA VIX.NS: 
+possibly delisted; no timezone found
+2026-05-31 22:50:22,498 | src.backtest.data_loader  | INFO    | Cached 
+RELIANCE (yfinance): 496 bars
+2026-05-31 22:50:22,628 | src.backtest.data_loader  | INFO    | Cached TCS 
+(yfinance): 496 bars
+2026-05-31 22:50:22,766 | src.backtest.data_loader  | INFO    | Cached 
+HDFCBANK (yfinance): 496 bars
+2026-05-31 22:50:22,940 | src.backtest.data_loader  | INFO    | Cached INFY 
+(yfinance): 496 bars
+2026-05-31 22:50:23,097 | src.backtest.data_loader  | INFO    | Cached 
+ICICIBANK (yfinance): 495 bars
+2026-05-31 22:50:23,269 | src.backtest.data_loader  | INFO    | Cached 
+HINDUNILVR (yfinance): 496 bars
+2026-05-31 22:50:23,410 | src.backtest.data_loader  | INFO    | Cached ITC 
+(yfinance): 496 bars
+2026-05-31 22:50:23,555 | src.backtest.data_loader  | INFO    | Cached SBIN 
+(yfinance): 495 bars
+2026-05-31 22:50:23,718 | src.backtest.data_loader  | INFO    | Cached 
+BHARTIARTL (yfinance): 496 bars
+2026-05-31 22:50:23,877 | src.backtest.data_loader  | INFO    | Cached 
+KOTAKBANK (yfinance): 496 bars
+2026-05-31 22:50:24,013 | src.backtest.data_loader  | INFO    | Cached LT 
+(yfinance): 496 bars
+2026-05-31 22:50:24,162 | src.backtest.data_loader  | INFO    | Cached 
+AXISBANK (yfinance): 495 bars
+2026-05-31 22:50:24,310 | src.backtest.data_loader  | INFO    | Cached 
+ASIANPAINT (yfinance): 496 bars
+2026-05-31 22:50:24,445 | src.backtest.data_loader  | INFO    | Cached MARUTI 
+(yfinance): 495 bars
+2026-05-31 22:50:24,594 | src.backtest.data_loader  | INFO    | Cached TITAN 
+(yfinance): 495 bars
+2026-05-31 22:50:24,756 | src.backtest.data_loader  | INFO    | Cached 
+SUNPHARMA (yfinance): 495 bars
+2026-05-31 22:50:24,920 | src.backtest.data_loader  | INFO    | Cached 
+BAJFINANCE (yfinance): 496 bars
+2026-05-31 22:50:25,125 | src.backtest.data_loader  | INFO    | Cached WIPRO 
+(yfinance): 496 bars
+2026-05-31 22:50:25,376 | src.backtest.data_loader  | INFO    | Cached HCLTECH 
+(yfinance): 496 bars
+2026-05-31 22:50:25,510 | src.backtest.data_loader  | INFO    | Cached 
+ULTRACEMCO (yfinance): 495 bars
+2026-05-31 22:50:25,690 | src.backtest.data_loader  | INFO    | Cached NTPC 
+(yfinance): 496 bars
+2026-05-31 22:50:25,853 | src.backtest.data_loader  | INFO    | Cached 
+POWERGRID (yfinance): 496 bars
+2026-05-31 22:50:26,019 | src.backtest.data_loader  | INFO    | Cached M&M 
+(yfinance): 496 bars
+2026-05-31 22:50:26,401 | yfinance                  | ERROR   | 
+$TATAMOTORS.NS: possibly delisted; no timezone found
+2026-05-31 22:50:26,534 | src.backtest.data_loader  | INFO    | Cached 
+TATASTEEL (yfinance): 496 bars
+2026-05-31 22:50:26,666 | src.backtest.data_loader  | INFO    | Cached TECHM 
+(yfinance): 495 bars
+2026-05-31 22:50:26,793 | src.backtest.data_loader  | INFO    | Cached 
+INDUSINDBK (yfinance): 496 bars
+2026-05-31 22:50:26,935 | src.backtest.data_loader  | INFO    | Cached 
+NESTLEIND (yfinance): 496 bars
+2026-05-31 22:50:27,090 | src.backtest.data_loader  | INFO    | Cached 
+JSWSTEEL (yfinance): 496 bars
+2026-05-31 22:50:27,322 | src.backtest.data_loader  | INFO    | Cached 
+ADANIENT (yfinance): 496 bars
+2026-05-31 22:50:27,516 | src.backtest.data_loader  | INFO    | Cached 
+BAJAJFINSV (yfinance): 496 bars
+2026-05-31 22:50:27,699 | src.backtest.data_loader  | INFO    | Cached ONGC 
+(yfinance): 496 bars
+2026-05-31 22:50:27,814 | src.backtest.data_loader  | INFO    | Cached 
+COALINDIA (yfinance): 496 bars
+2026-05-31 22:50:27,954 | src.backtest.data_loader  | INFO    | Cached GRASIM 
+(yfinance): 495 bars
+2026-05-31 22:50:28,110 | src.backtest.data_loader  | INFO    | Cached CIPLA 
+(yfinance): 496 bars
+2026-05-31 22:50:28,252 | src.backtest.data_loader  | INFO    | Cached DRREDDY 
+(yfinance): 495 bars
+2026-05-31 22:50:28,487 | src.backtest.data_loader  | INFO    | Cached 
+APOLLOHOSP (yfinance): 496 bars
+2026-05-31 22:50:28,632 | src.backtest.data_loader  | INFO    | Cached 
+EICHERMOT (yfinance): 495 bars
+2026-05-31 22:50:28,952 | src.backtest.data_loader  | INFO    | Cached 
+HEROMOTOCO (yfinance): 495 bars
+2026-05-31 22:50:29,087 | src.backtest.data_loader  | INFO    | Cached 
+DIVISLAB (yfinance): 495 bars
+2026-05-31 22:50:29,232 | src.backtest.data_loader  | INFO    | Cached BPCL 
+(yfinance): 496 bars
+2026-05-31 22:50:29,378 | src.backtest.data_loader  | INFO    | Cached 
+TATACONSUM (yfinance): 496 bars
+2026-05-31 22:50:29,520 | src.backtest.data_loader  | INFO    | Cached 
+BRITANNIA (yfinance): 495 bars
+2026-05-31 22:50:29,686 | src.backtest.data_loader  | INFO    | Cached SBILIFE 
+(yfinance): 495 bars
+2026-05-31 22:50:29,832 | src.backtest.data_loader  | INFO    | Cached 
+HINDALCO (yfinance): 496 bars
+2026-05-31 22:50:29,998 | src.backtest.data_loader  | INFO    | Cached 
+HDFCLIFE (yfinance): 495 bars
+2026-05-31 22:50:30,147 | src.backtest.data_loader  | INFO    | Cached 
+BAJAJ-AUTO (yfinance): 496 bars
+2026-05-31 22:50:30,338 | src.backtest.data_loader  | INFO    | Cached 
+SHRIRAMFIN (yfinance): 495 bars
+2026-05-31 22:50:31,005 | yfinance                  | ERROR   | $LTIM.NS: 
+possibly delisted; no timezone found
+2026-05-31 22:50:31,152 | src.backtest.data_loader  | INFO    | Cached 
+ADANIPORTS (yfinance): 495 bars
+2026-05-31 22:50:31,179 | src.backtest.data_loader  | INFO    | Loaded 48/50 
+stocks for backtest universe
+2026-05-31 22:50:31,179 | src.backtest.walk_forward | INFO    | Data loaded: 
+Nifty=493 bars, Universe=48 stocks
+2026-05-31 22:50:31,179 | src.backtest.walk_forward | INFO    | 
+============================================================
+2026-05-31 22:50:31,179 | src.backtest.walk_forward | INFO    | Window 1: 
+Train May 2024 - Nov 2024
+2026-05-31 22:50:31,180 | src.backtest.walk_forward | INFO    |            
+Test  Nov 2024 - Feb 2025
+2026-05-31 22:50:31,180 | src.backtest.walk_forward | INFO    |            
+Capital: Γé╣200,000
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.
+3568.0_x64__qbz5n2kfra8p0\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.
+3568.0_x64__qbz5n2kfra8p0\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u20b9' in 
+position 84: character maps to <undefined>
+Call stack:
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\run_backtest.py", 
+line 212, in <module>
+    main()
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\run_backtest.py", 
+line 198, in main
+    run_backtest(
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\run_backtest.py", 
+line 118, in run_backtest
+    results = runner.run(start_date=start_date, end_date=end_date)
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\walk_forward.py", 
+line 162, in run
+    logger.info(f"           Capital: Γé╣{self.current_capital:,.0f}")
+Message: '           Capital: Γé╣200,000'
+Arguments: ()
+2026-05-31 22:50:31,182 | src.backtest.walk_forward | INFO    | 
+============================================================
+2026-05-31 22:50:31,913 | src.backtest.walk_forward | INFO    | Capital: 
+Rs200,000 -> Rs200,000 (Flat test return (+0.0%) -> hold)
+2026-05-31 22:50:31,913 | src.backtest.walk_forward | INFO    | 
+============================================================
+2026-05-31 22:50:31,913 | src.backtest.walk_forward | INFO    | Window 2: 
+Train Aug 2024 - Feb 2025
+2026-05-31 22:50:31,913 | src.backtest.walk_forward | INFO    |            
+Test  Feb 2025 - May 2025
+2026-05-31 22:50:31,913 | src.backtest.walk_forward | INFO    |            
+Capital: Γé╣200,000
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.
+3568.0_x64__qbz5n2kfra8p0\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.
+3568.0_x64__qbz5n2kfra8p0\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u20b9' in 
+position 84: character maps to <undefined>
+Call stack:
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\run_backtest.py", 
+line 212, in <module>
+    main()
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\run_backtest.py", 
+line 198, in main
+    run_backtest(
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\run_backtest.py", 
+line 118, in run_backtest
+    results = runner.run(start_date=start_date, end_date=end_date)
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\walk_forward.py", 
+line 162, in run
+    logger.info(f"           Capital: Γé╣{self.current_capital:,.0f}")
+Message: '           Capital: Γé╣200,000'
+Arguments: ()
+2026-05-31 22:50:31,914 | src.backtest.walk_forward | INFO    | 
+============================================================
+2026-05-31 22:50:32,659 | src.backtest.walk_forward | INFO    | Capital: 
+Rs200,000 -> Rs200,000 (Flat test return (+1.2%) -> hold)
+2026-05-31 22:50:32,660 | src.backtest.walk_forward | INFO    | 
+============================================================
+2026-05-31 22:50:32,660 | src.backtest.walk_forward | INFO    | Window 3: 
+Train Nov 2024 - May 2025
+2026-05-31 22:50:32,660 | src.backtest.walk_forward | INFO    |            
+Test  May 2025 - Aug 2025
+2026-05-31 22:50:32,660 | src.backtest.walk_forward | INFO    |            
+Capital: Γé╣200,000
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.
+3568.0_x64__qbz5n2kfra8p0\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.
+3568.0_x64__qbz5n2kfra8p0\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u20b9' in 
+position 84: character maps to <undefined>
+Call stack:
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\run_backtest.py", 
+line 212, in <module>
+    main()
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\run_backtest.py", 
+line 198, in main
+    run_backtest(
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\run_backtest.py", 
+line 118, in run_backtest
+    results = runner.run(start_date=start_date, end_date=end_date)
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\walk_forward.py", 
+line 162, in run
+    logger.info(f"           Capital: Γé╣{self.current_capital:,.0f}")
+Message: '           Capital: Γé╣200,000'
+Arguments: ()
+2026-05-31 22:50:32,661 | src.backtest.walk_forward | INFO    | 
+============================================================
+2026-05-31 22:50:33,415 | src.backtest.walk_forward | INFO    | Capital: 
+Rs200,000 -> Rs300,000 (Strong test return (+5.5%) -> scale up 50%)
+2026-05-31 22:50:33,416 | src.backtest.walk_forward | INFO    | 
+============================================================
+2026-05-31 22:50:33,416 | src.backtest.walk_forward | INFO    | Window 4: 
+Train Feb 2025 - Aug 2025
+2026-05-31 22:50:33,416 | src.backtest.walk_forward | INFO    |            
+Test  Aug 2025 - Nov 2025
+2026-05-31 22:50:33,416 | src.backtest.walk_forward | INFO    |            
+Capital: Γé╣300,000
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.
+3568.0_x64__qbz5n2kfra8p0\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.
+3568.0_x64__qbz5n2kfra8p0\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u20b9' in 
+position 84: character maps to <undefined>
+Call stack:
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\run_backtest.py", 
+line 212, in <module>
+    main()
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\run_backtest.py", 
+line 198, in main
+    run_backtest(
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\run_backtest.py", 
+line 118, in run_backtest
+    results = runner.run(start_date=start_date, end_date=end_date)
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\walk_forward.py", 
+line 162, in run
+    logger.info(f"           Capital: Γé╣{self.current_capital:,.0f}")
+Message: '           Capital: Γé╣300,000'
+Arguments: ()
+2026-05-31 22:50:33,417 | src.backtest.walk_forward | INFO    | 
+============================================================
+2026-05-31 22:50:34,141 | src.backtest.walk_forward | INFO    | Capital: 
+Rs300,000 -> Rs375,000 (Good test return (+4.9%) -> scale up 25%)
+2026-05-31 22:50:34,141 | src.backtest.walk_forward | INFO    | 
+============================================================
+2026-05-31 22:50:34,141 | src.backtest.walk_forward | INFO    | Window 5: 
+Train May 2025 - Nov 2025
+2026-05-31 22:50:34,141 | src.backtest.walk_forward | INFO    |            
+Test  Nov 2025 - Feb 2026
+2026-05-31 22:50:34,141 | src.backtest.walk_forward | INFO    |            
+Capital: Γé╣375,000
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.
+3568.0_x64__qbz5n2kfra8p0\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.
+3568.0_x64__qbz5n2kfra8p0\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u20b9' in 
+position 84: character maps to <undefined>
+Call stack:
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\run_backtest.py", 
+line 212, in <module>
+    main()
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\run_backtest.py", 
+line 198, in main
+    run_backtest(
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\run_backtest.py", 
+line 118, in run_backtest
+    results = runner.run(start_date=start_date, end_date=end_date)
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\walk_forward.py", 
+line 162, in run
+    logger.info(f"           Capital: Γé╣{self.current_capital:,.0f}")
+Message: '           Capital: Γé╣375,000'
+Arguments: ()
+2026-05-31 22:50:34,142 | src.backtest.walk_forward | INFO    | 
+============================================================
+2026-05-31 22:50:34,895 | src.backtest.walk_forward | INFO    | Capital: 
+Rs375,000 -> Rs375,000 (Flat test return (+0.9%) -> hold)
+2026-05-31 22:50:34,895 | src.backtest.walk_forward | INFO    | 
+============================================================
+2026-05-31 22:50:34,895 | src.backtest.walk_forward | INFO    | Window 6: 
+Train Aug 2025 - Feb 2026
+2026-05-31 22:50:34,895 | src.backtest.walk_forward | INFO    |            
+Test  Feb 2026 - May 2026
+2026-05-31 22:50:34,895 | src.backtest.walk_forward | INFO    |            
+Capital: Γé╣375,000
+--- Logging error ---
+Traceback (most recent call last):
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.
+3568.0_x64__qbz5n2kfra8p0\Lib\logging\__init__.py", line 1154, in emit
+    stream.write(msg + self.terminator)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.
+3568.0_x64__qbz5n2kfra8p0\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u20b9' in 
+position 84: character maps to <undefined>
+Call stack:
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\run_backtest.py", 
+line 212, in <module>
+    main()
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\run_backtest.py", 
+line 198, in main
+    run_backtest(
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\run_backtest.py", 
+line 118, in run_backtest
+    results = runner.run(start_date=start_date, end_date=end_date)
+  File "C:\Users\A962251\hm\wip\personal\zero\src\backtest\walk_forward.py", 
+line 162, in run
+    logger.info(f"           Capital: Γé╣{self.current_capital:,.0f}")
+Message: '           Capital: Γé╣375,000'
+Arguments: ()
+2026-05-31 22:50:34,896 | src.backtest.walk_forward | INFO    | 
+============================================================
+2026-05-31 22:50:35,692 | src.backtest.walk_forward | INFO    | Capital: 
+Rs375,000 -> Rs375,000 (Flat test return (+0.0%) -> hold)
+2026-05-31 22:50:35,695 | src.backtest.report       | INFO    | JSON report: 
+reports\backtest_report_20260531_225035.json
+2026-05-31 22:50:35,705 | src.backtest.report       | INFO    | Trade log: 
+reports\trade_log_20260531_225035.csv (56 trades)
+2026-05-31 22:50:36,720 | src.backtest.report       | INFO    | Equity curve: 
+reports\equity_curve_20260531_225035.png
+2026-05-31 22:50:37,068 | src.backtest.report       | INFO    | Monthly 
+returns: reports\monthly_returns_20260531_225035.png
+2026-05-31 22:50:37,322 | src.backtest.report       | INFO    | Capital 
+scaling: reports\capital_scaling_20260531_225035.png
+2026-05-31 22:50:37,323 | src.backtest.report       | INFO    | Reports saved 
+to: reports/
+================================================================
+  Zero Trading Agent ΓÇö Walk-Forward Backtest
+  Capital: Γé╣200,000 ΓåÆ Max Γé╣500,000
+  Mode: Walk-Forward
+  Started: 2026-05-31 22:50:17
+================================================================
+
+
+ΓòöΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòù
+Γòæ            WALK-FORWARD BACKTEST RESULTS                    Γòæ
+ΓòÜΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓò¥
+
+  Period:            May 2024 - May 2026 (2.0 years)
+  Initial Capital:   Γé╣200,000
+  Final Capital:     Γé╣375,000
+  Total Return:      +87.5%
+  CAGR:              37.0%
+  Total Trades:      56
+
+  ΓöÇΓöÇΓöÇ Risk Metrics ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  Max Drawdown:      0.7%
+  Avg Sharpe Ratio:  2.05
+  Worst Window:      +0.0%
+  Best Window:       +5.5%
+
+  ΓöÇΓöÇΓöÇ Theta Selling (Options) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  Trades:            56
+  Win Rate:          96%
+  Net P&L:           Γé╣31,388
+  Profit Factor:     8.29
+  Avg Winner:        Γé╣661
+  Avg Loser:         Γé╣-2,153
+
+  ΓöÇΓöÇΓöÇ Momentum Swing ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  Trades:            0
+  Win Rate:          0%
+  Net P&L:           Γé╣0
+  Profit Factor:     0.00
+  Avg Winner:        Γé╣0
+  Avg Loser:         Γé╣0
+
+  ΓöÇΓöÇΓöÇ Capital Scaling ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  Window 1: Γé╣200,000 ΓåÆ Γé╣200,000 (+0%)
+  Window 2: Γé╣200,000 ΓåÆ Γé╣200,000 (+0%)
+  Window 3: Γé╣200,000 Γåæ Γé╣300,000 (+50%)
+  Window 4: Γé╣300,000 Γåæ Γé╣375,000 (+25%)
+  Window 5: Γé╣375,000 ΓåÆ Γé╣375,000 (+0%)
+  Window 6: Γé╣375,000 ΓåÆ Γé╣375,000 (+0%)
+
+  Peak Capital:      Γé╣375,000
+  Min Capital:       Γé╣200,000
+
+  ΓöÇΓöÇΓöÇ Walk-Forward Windows ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+  Γ¥î W1 Test: Nov 2024 - Feb 2025 | +0.0% | 0 trades | WR 0% | Sharpe 0.00
+  Γ£à W2 Test: Feb 2025 - May 2025 | +1.2% | 3 trades | WR 100% | Sharpe -0.70
+  Γ£à W3 Test: May 2025 - Aug 2025 | +5.5% | 15 trades | WR 100% | Sharpe 6.17
+  Γ£à W4 Test: Aug 2025 - Nov 2025 | +4.9% | 23 trades | WR 100% | Sharpe 8.21
+  Γ£à W5 Test: Nov 2025 - Feb 2026 | +0.9% | 15 trades | WR 87% | Sharpe -1.38
+  Γ¥î W6 Test: Feb 2026 - May 2026 | +0.0% | 0 trades | WR 0% | Sharpe 0.00
+
+ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+  Reports: reports/
+ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+
+
+================================================================
+  Γ£à VERDICT: Strategy shows positive expectancy
+     CAGR 37.0% with max drawdown 0.7%
+     ΓåÆ RECOMMENDED for live deployment with Γé╣2L start
+================================================================

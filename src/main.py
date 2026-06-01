@@ -390,6 +390,8 @@ class TradingOrchestrator:
         risk_summary = self.risk_manager.get_risk_summary()
         winners = sum(1 for t in self.risk_manager.today_trades if t.pnl > 0)
         losers = sum(1 for t in self.risk_manager.today_trades if t.pnl < 0)
+        theta_trades = [t for t in self.risk_manager.today_trades if t.strategy == "theta_selling"]
+        theta_pnl = sum(t.pnl for t in theta_trades)
 
         summary = {
             "daily_pnl": risk_summary["daily_pnl"],
@@ -397,7 +399,10 @@ class TradingOrchestrator:
             "total_trades": len(self.risk_manager.today_trades),
             "winners": winners,
             "losers": losers,
+            "theta_trades": len(theta_trades),
+            "theta_pnl": theta_pnl,
             "open_positions": risk_summary["open_positions"],
+            "total_capital": self.config["capital"]["total"],
             "capital_deployed": sum(
                 p.entry_price * p.quantity for p in self.risk_manager.open_positions
             ),
@@ -520,10 +525,11 @@ class TradingOrchestrator:
 
         self.running = True
 
-        # Schedule tasks
+        # Schedule tasks (Theta-Only Mode)
         schedule.every().day.at("09:00").do(self.run_pre_market)
         schedule.every().day.at("09:30").do(self.run_options_scan)
-        schedule.every().day.at("10:00").do(self.run_swing_scan)
+        # Swing scan disabled - negative expectancy confirmed in 2-year backtest
+        # schedule.every().day.at("10:00").do(self.run_swing_scan)
         schedule.every(5).minutes.do(self.monitor_positions)
         schedule.every().day.at("15:35").do(self.run_post_market)
 

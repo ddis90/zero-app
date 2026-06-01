@@ -13,9 +13,9 @@ broker:
 capital:
   total: 200000
   allocation:
-    options_theta: 0.60      # 60% for options selling (₹1.2L margin)
-    swing_trading: 0.25      # 25% for swing trades (₹50K)
-    index_etf: 0.15          # 15% for ETF accumulation (₹30K)
+    options_theta: 0.90      # 90% for options selling (₹1.8L margin)
+    swing_trading: 0.00      # Disabled: negative expectancy in backtest
+    index_etf: 0.10          # 10% for ETF accumulation (₹20K)
 
 # Risk Management Guardrails
 risk:
@@ -41,15 +41,26 @@ universe:
     above_200dma: true                 # Must be above 200 DMA
     rsi_entry_range: [30, 70]          # RSI between 30-70 for entries
 
-# Options Strategy Parameters
+# Options Strategy Parameters (Adaptive OTM from backtest)
 options:
-  instruments: ["NIFTY", "BANKNIFTY"]
-  strategy_type: "credit_spread"       # iron_condor, credit_spread, naked_sell
-  days_to_expiry_entry: [3, 5]         # Enter 3-5 days before expiry
-  otm_distance_pct: 3.0               # Sell strikes 3% OTM
-  max_premium_risk_ratio: 3.0         # Max risk = 3x premium collected
-  vix_threshold: 20.0                  # Don't sell if India VIX > 20
-  stop_loss_pct: 50.0                  # Exit if loss = 50% of max profit
+  instruments: ["NIFTY"]
+  strategy_type: "credit_spread"       # Bull put spread only
+  days_to_expiry_entry: [3, 5]         # Enter 3-5 days before expiry (Thu/Fri)
+  adaptive_otm:                         # VIX-adaptive OTM distances
+    low_vix_threshold: 13              # VIX < 13: tighter spreads
+    low_vix_otm_pct: 1.5              # 1.5% OTM, 200pt spread
+    low_vix_spread_width: 200
+    mid_vix_threshold: 18              # VIX 13-18: standard
+    mid_vix_otm_pct: 2.5              # 2.5% OTM, 150pt spread
+    mid_vix_spread_width: 150
+    high_vix_otm_pct: 3.0             # VIX 18-22: conservative
+    high_vix_spread_width: 100
+  otm_distance_pct: 2.5               # Fallback default
+  max_premium_risk_ratio: 5.0         # Max risk = 5x premium collected
+  min_premium: 8                       # Minimum premium ₹8 per lot
+  vix_threshold: 22.0                  # Don't sell if India VIX > 22
+  stop_loss_multiplier: 2.0            # Exit if loss > 2x premium collected
+  max_lots: 2                          # 2 lots per trade at ₹2L capital
 
 # Swing Trading Parameters
 swing:

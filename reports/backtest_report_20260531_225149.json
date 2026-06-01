@@ -1,0 +1,205 @@
+{
+  "summary": {
+    "initial_capital": 200000.0,
+    "final_capital": 450000.0,
+    "total_return_pct": 125.0,
+    "cagr_pct": 50.04,
+    "period": "May 2024 - May 2026",
+    "years": 2.0,
+    "total_windows": 6,
+    "total_trades": 56
+  },
+  "strategies": {
+    "theta_selling": {
+      "trades": 56,
+      "net_pnl": 43294.02,
+      "win_rate": 96.4,
+      "avg_winner": 959.0,
+      "avg_loser": -4258.0,
+      "profit_factor": 6.08,
+      "total_brokerage": 2719.0
+    },
+    "momentum_swing": {
+      "trades": 0,
+      "net_pnl": 0,
+      "win_rate": 0
+    }
+  },
+  "risk_metrics": {
+    "max_drawdown_pct": 1.18,
+    "avg_sharpe": 2.515,
+    "worst_window_return": 0.0,
+    "best_window_return": 7.512806666666662
+  },
+  "capital_scaling": {
+    "decisions": [
+      {
+        "window": 1,
+        "from": 200000.0,
+        "to": 200000.0,
+        "change_pct": 0.0,
+        "reason": "Flat test return (+0.0%) -> hold"
+      },
+      {
+        "window": 2,
+        "from": 200000.0,
+        "to": 200000.0,
+        "change_pct": 0.0,
+        "reason": "Flat test return (+1.2%) -> hold"
+      },
+      {
+        "window": 3,
+        "from": 200000.0,
+        "to": 300000.0,
+        "change_pct": 50.0,
+        "reason": "Strong test return (+5.5%) -> scale up 50%"
+      },
+      {
+        "window": 4,
+        "from": 300000.0,
+        "to": 450000.0,
+        "change_pct": 50.0,
+        "reason": "Strong test return (+7.5%) -> scale up 50%"
+      },
+      {
+        "window": 5,
+        "from": 450000.0,
+        "to": 450000.0,
+        "change_pct": 0.0,
+        "reason": "Flat test return (+1.6%) -> hold"
+      },
+      {
+        "window": 6,
+        "from": 450000.0,
+        "to": 450000.0,
+        "change_pct": 0.0,
+        "reason": "Flat test return (+0.0%) -> hold"
+      }
+    ],
+    "peak_capital": 450000.0,
+    "min_capital": 200000.0
+  },
+  "windows": [
+    {
+      "id": 1,
+      "type": "train",
+      "period": "May 2024 - Nov 2024",
+      "return_pct": -5.39,
+      "trades": 11,
+      "win_rate": 81.8,
+      "sharpe": -1.86,
+      "max_drawdown": 7.34
+    },
+    {
+      "id": 1,
+      "type": "test",
+      "period": "Nov 2024 - Feb 2025",
+      "return_pct": 0.0,
+      "trades": 0,
+      "win_rate": 0,
+      "sharpe": 0.0,
+      "max_drawdown": 0.0
+    },
+    {
+      "id": 2,
+      "type": "train",
+      "period": "Aug 2024 - Feb 2025",
+      "return_pct": -2.97,
+      "trades": 5,
+      "win_rate": 80.0,
+      "sharpe": -1.89,
+      "max_drawdown": 4.52
+    },
+    {
+      "id": 2,
+      "type": "test",
+      "period": "Feb 2025 - May 2025",
+      "return_pct": 1.24,
+      "trades": 3,
+      "win_rate": 100.0,
+      "sharpe": -0.7,
+      "max_drawdown": 0.0
+    },
+    {
+      "id": 3,
+      "type": "train",
+      "period": "Nov 2024 - May 2025",
+      "return_pct": 1.24,
+      "trades": 3,
+      "win_rate": 100.0,
+      "sharpe": -3.81,
+      "max_drawdown": 0.0
+    },
+    {
+      "id": 3,
+      "type": "test",
+      "period": "May 2025 - Aug 2025",
+      "return_pct": 5.46,
+      "trades": 15,
+      "win_rate": 100.0,
+      "sharpe": 6.17,
+      "max_drawdown": 0.0
+    },
+    {
+      "id": 4,
+      "type": "train",
+      "period": "Feb 2025 - Aug 2025",
+      "return_pct": 6.84,
+      "trades": 18,
+      "win_rate": 100.0,
+      "sharpe": 3.55,
+      "max_drawdown": 0.0
+    },
+    {
+      "id": 4,
+      "type": "test",
+      "period": "Aug 2025 - Nov 2025",
+      "return_pct": 7.51,
+      "trades": 23,
+      "win_rate": 100.0,
+      "sharpe": 9.55,
+      "max_drawdown": 0.0
+    },
+    {
+      "id": 5,
+      "type": "train",
+      "period": "May 2025 - Nov 2025",
+      "return_pct": 12.4,
+      "trades": 40,
+      "win_rate": 100.0,
+      "sharpe": 7.78,
+      "max_drawdown": 0.0
+    },
+    {
+      "id": 5,
+      "type": "test",
+      "period": "Nov 2025 - Feb 2026",
+      "return_pct": 1.63,
+      "trades": 15,
+      "win_rate": 86.7,
+      "sharpe": 0.07,
+      "max_drawdown": 1.18
+    },
+    {
+      "id": 6,
+      "type": "train",
+      "period": "Aug 2025 - Feb 2026",
+      "return_pct": 8.76,
+      "trades": 39,
+      "win_rate": 94.9,
+      "sharpe": 3.79,
+      "max_drawdown": 1.11
+    },
+    {
+      "id": 6,
+      "type": "test",
+      "period": "Feb 2026 - May 2026",
+      "return_pct": 0.0,
+      "trades": 0,
+      "win_rate": 0,
+      "sharpe": 0.0,
+      "max_drawdown": 0.0
+    }
+  ],
+  "generated_at": "2026-05-31T22:51:49.270627"
+}

@@ -334,11 +334,11 @@ class BacktestEngine:
 
     def check_exits(self, date: datetime, market_data: dict) -> list[BacktestTrade]:
         """
-        Check all open positions for exit conditions (stop-loss, target, time).
+        Check all open positions for exit conditions (stop-loss, trailing stop, target, time).
         
         Args:
             date: Current date
-            market_data: Dict mapping symbol → {open, high, low, close, volume, rsi, atr}
+            market_data: Dict mapping symbol -> {open, high, low, close, volume, rsi, atr, adx}
         """
         closed = []
         for position in list(self.positions):
@@ -354,6 +354,15 @@ class BacktestEngine:
             exit_reason = None
 
             if position.direction == "long":
+                # --- Trailing Stop Logic ---
+                # Move stop to breakeven after 1x ATR profit
+                atr = position.metadata.get("atr", 0)
+                if atr > 0 and close > position.entry_price + atr:
+                    # Trail stop to breakeven + 0.5 ATR (lock in small profit)
+                    trailing_stop = position.entry_price + 0.5 * atr
+                    if trailing_stop > position.stop_loss:
+                        position.stop_loss = trailing_stop
+
                 # Stop loss hit (use low of the day)
                 if low <= position.stop_loss:
                     exit_price = position.stop_loss
@@ -362,7 +371,10 @@ class BacktestEngine:
                 elif high >= position.target:
                     exit_price = position.target
                     exit_reason = "target"
-                # Time-based exit (15 days max)
+                # Time-based exit (20 days max for mean-reversion, 15 for breakout)
+                elif position.metadata.get("entry_type") == "mean_reversion" and (date - position.entry_date).days >= 20:
+                    exit_price = close
+                    exit_reason = "time_exit"
                 elif (date - position.entry_date).days >= 15:
                     exit_price = close
                     exit_reason = "time_exit"

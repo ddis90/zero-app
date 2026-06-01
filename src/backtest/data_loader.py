@@ -104,11 +104,57 @@ class DataLoader:
         start_date: datetime = None,
         end_date: datetime = None,
     ) -> pd.DataFrame:
-        """Load India VIX historical data."""
+        """Load India VIX historical data with multiple fallbacks."""
         df = self.load_equity_data("INDIA VIX", "NSE", start_date, end_date)
         if df.empty:
-            df = self._fetch_from_yfinance("^INDIAVIX", "NSE", start_date, end_date)
+            # Try multiple yfinance symbols for India VIX
+            # Use ^ prefix so _fetch_from_yfinance doesn't append .NS
+            for vix_symbol in ["^INDIAVIX", "^NSEIV"]:
+                df = self._fetch_from_yfinance(vix_symbol, "NSE", start_date, end_date)
+                if not df.empty:
+                    break
+        if df.empty:
+            # Generate synthetic VIX from Nifty realized volatility as final fallback
+            logger.warning("VIX data unavailable. Generating synthetic VIX from Nifty realized volatility.")
+            df = self._generate_synthetic_vix(start_date, end_date)
         return df
+
+    def _generate_synthetic_vix(
+        self,
+        start_date: datetime = None,
+        end_date: datetime = None,
+    ) -> pd.DataFrame:
+        """
+        Generate synthetic VIX proxy from Nifty 50 realized volatility.
+        Uses 20-day rolling std of log returns, annualized.
+        Empirically India VIX trades at ~1.2x realized vol in calm markets.
+        """
+        nifty_df = self._fetch_from_yfinance("^NSEI", "NSE", start_date, end_date)
+        if nifty_df.empty or len(nifty_df) < 25:
+            # Absolute fallback: constant VIX at 14 (long-term Indian mean)
+            logger.warning("Cannot compute synthetic VIX. Using constant VIX=14.")
+            if start_date and end_date:
+                dates = pd.bdate_range(start_date, end_date)
+                return pd.DataFrame(
+                    {"open": 14.0, "high": 15.0, "low": 13.0, "close": 14.0, "volume": 0},
+                    index=dates,
+                )
+            return pd.DataFrame()
+
+        log_returns = np.log(nifty_df["close"] / nifty_df["close"].shift(1))
+        realized_vol = log_returns.rolling(20).std() * np.sqrt(252) * 100  # Annualized %
+        # VIX typically trades at 1.2x realized vol with a floor of 10
+        synthetic_vix = (realized_vol * 1.2).clip(lower=10.0)
+        vix_df = pd.DataFrame({
+            "open": synthetic_vix,
+            "high": synthetic_vix * 1.05,
+            "low": synthetic_vix * 0.95,
+            "close": synthetic_vix,
+            "volume": 0,
+        }, index=nifty_df.index)
+        vix_df = vix_df.dropna()
+        logger.info(f"Generated synthetic VIX: {len(vix_df)} bars, mean={vix_df['close'].mean():.1f}")
+        return vix_df
 
     def load_nifty500_universe(
         self,

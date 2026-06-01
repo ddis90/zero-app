@@ -44,6 +44,8 @@ class ThetaSellingStrategy(BaseStrategy):
         self.fetcher = fetcher
         self.risk_config = config["risk"]
         self.capital_allocation = config["capital"]["total"] * config["capital"]["allocation"]["options_theta"]
+        self.adaptive_otm = config["options"].get("adaptive_otm", {})
+        self.max_lots = config["options"].get("max_lots", 2)
 
     def _load_full_config(self, path: str) -> dict:
         with open(path, "r") as f:
@@ -104,8 +106,20 @@ class ThetaSellingStrategy(BaseStrategy):
         """
         Find optimal put credit spread (bull put spread).
         Sell higher strike put, buy lower strike put.
+        Uses adaptive OTM distance based on VIX level.
         """
-        otm_distance = self.config["otm_distance_pct"] / 100
+        # Adaptive OTM: tighter in low VIX (higher probability), wider in high VIX (safety)
+        if self.adaptive_otm:
+            low_thresh = self.adaptive_otm.get("low_vix_threshold", 13)
+            mid_thresh = self.adaptive_otm.get("mid_vix_threshold", 18)
+            if vix < low_thresh:
+                otm_distance = self.adaptive_otm.get("low_vix_otm_pct", 1.5) / 100
+            elif vix < mid_thresh:
+                otm_distance = self.adaptive_otm.get("mid_vix_otm_pct", 2.5) / 100
+            else:
+                otm_distance = self.adaptive_otm.get("high_vix_otm_pct", 3.0) / 100
+        else:
+            otm_distance = self.config["otm_distance_pct"] / 100
         target_strike = spot_price * (1 - otm_distance)
 
         # Get put options
@@ -152,22 +166,28 @@ class ThetaSellingStrategy(BaseStrategy):
         confidence = min(0.9, (distance_pct / 5) * 0.5 + ((20 - vix) / 20) * 0.5)
 
         lot_size = self._get_lot_size(underlying)
+        num_lots = min(self.max_lots, max(1, int(self.capital_allocation / 100000)))
+
+        # Check minimum premium threshold
+        min_premium = self.config.get("min_premium", 8)
+        if premium_collected < min_premium:
+            return None
 
         return Signal(
             signal_type=SignalType.SELL,
             symbol=f"{underlying}_PUT_SPREAD",
             exchange="NFO",
             entry_price=premium_collected,
-            stop_loss=premium_collected + (max_loss * self.config["stop_loss_pct"] / 100),
+            stop_loss=premium_collected * self.config.get("stop_loss_multiplier", 2.0),
             target=premium_collected * 0.5,  # Exit at 50% profit
-            quantity=lot_size,
+            quantity=lot_size * num_lots,
             strategy_name=self.name,
             confidence=confidence,
             reason=(
                 f"Bull Put Spread: Sell {sell_put['strike']}PE @ ₹{sell_put['ltp']:.1f}, "
                 f"Buy {buy_put['strike']}PE @ ₹{buy_put['ltp']:.1f} | "
                 f"Premium: ₹{premium_collected:.1f} | Max Loss: ₹{max_loss:.1f} | "
-                f"VIX: {vix:.1f} | Distance: {distance_pct:.1f}%"
+                f"VIX: {vix:.1f} | Distance: {distance_pct:.1f}% | Lots: {num_lots}"
             ),
             metadata={
                 "sell_strike": sell_put["strike"],

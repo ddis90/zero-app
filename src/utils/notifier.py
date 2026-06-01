@@ -85,19 +85,29 @@ class TelegramNotifier:
         self.send_message(msg)
 
     def notify_daily_summary(self, summary: dict):
-        """Send end-of-day P&L summary."""
+        """Send end-of-day P&L summary with strategy breakdown."""
         pnl = summary.get("daily_pnl", 0)
         pnl_emoji = "📈" if pnl >= 0 else "📉"
+        weekly_pnl = summary.get("weekly_pnl", 0)
+        theta_pnl = summary.get("theta_pnl", 0)
+        theta_trades = summary.get("theta_trades", 0)
+        total_capital = summary.get("total_capital", 200000)
+        day_return_pct = (pnl / total_capital * 100) if total_capital > 0 else 0
+
         msg = (
-            f"{pnl_emoji} <b>Daily Summary</b> | {datetime.now().strftime('%d-%b-%Y')}\n"
-            f"{'─' * 25}\n"
-            f"P&L: {'₹' + f'{pnl:.0f}' if pnl >= 0 else '-₹' + f'{abs(pnl):.0f}'}\n"
-            f"Trades: {summary.get('total_trades', 0)}\n"
-            f"Winners: {summary.get('winners', 0)} | Losers: {summary.get('losers', 0)}\n"
-            f"Open Positions: {summary.get('open_positions', 0)}\n"
-            f"Capital Deployed: ₹{summary.get('capital_deployed', 0):,.0f}\n"
-            f"{'─' * 25}\n"
-            f"Weekly P&L: ₹{summary.get('weekly_pnl', 0):.0f}\n"
+            f"{pnl_emoji} <b>Daily Summary</b> | {datetime.now().strftime('%d-%b-%Y (%A)')}\n"
+            f"{'─' * 30}\n"
+            f"<b>P&L: {'₹' + f'{pnl:,.0f}' if pnl >= 0 else '-₹' + f'{abs(pnl):,.0f}'}</b> "
+            f"({day_return_pct:+.2f}%)\n\n"
+            f"📊 <b>Theta Strategy</b>\n"
+            f"  Trades: {theta_trades} | P&L: ₹{theta_pnl:,.0f}\n"
+            f"  Winners: {summary.get('winners', 0)} | Losers: {summary.get('losers', 0)}\n\n"
+            f"💼 <b>Portfolio</b>\n"
+            f"  Capital: ₹{total_capital:,.0f}\n"
+            f"  Open Positions: {summary.get('open_positions', 0)}\n"
+            f"  Deployed: ₹{summary.get('capital_deployed', 0):,.0f}\n"
+            f"{'─' * 30}\n"
+            f"📅 Weekly P&L: ₹{weekly_pnl:,.0f}\n"
             f"Status: {summary.get('status', 'Active')}"
         )
         self.send_message(msg)
