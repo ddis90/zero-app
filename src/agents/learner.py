@@ -42,7 +42,7 @@ class StrategyParams:
         return {
             "options_otm_distance_pct": config["options"]["otm_distance_pct"],
             "options_vix_threshold": config["options"]["vix_threshold"],
-            "options_stop_loss_pct": config["options"]["stop_loss_pct"],
+            "options_stop_loss_multiplier": config["options"]["stop_loss_multiplier"],
             "swing_min_volume_surge": config["swing"]["min_volume_surge_multiplier"],
             "risk_max_per_trade_pct": config["risk"]["max_risk_per_trade_pct"],
             "risk_trailing_stop_pct": config["risk"]["trailing_stop_pct"],
