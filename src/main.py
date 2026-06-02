@@ -545,25 +545,33 @@ class TradingOrchestrator:
         logger.info("Scheduled tasks registered")
 
     def _retry_init(self):
-        """Retry initialization at 09:05 if startup auth failed (CAPTCHA fallback)."""
-        logger.info("Retrying auth (09:05 scheduled retry)...")
-        # Cancel this job so it only runs once
-        jobs_to_cancel = [j for j in schedule.jobs if j.job_func == self._retry_init]
-        for j in jobs_to_cancel:
-            schedule.cancel_job(j)
+        """Retry initialization periodically until auth succeeds or market closes."""
+        logger.info("Retrying auth (periodic retry)...")
 
         if self.initialize():
             global _system_healthy
             _system_healthy = True
+            # Cancel future retries
+            jobs_to_cancel = [j for j in schedule.jobs if j.job_func == self._retry_init]
+            for j in jobs_to_cancel:
+                schedule.cancel_job(j)
             self._setup_scheduled_tasks()
             self.notifier.send_message("✅ Auth retry succeeded — system is LIVE")
             logger.info("Auth retry succeeded — all tasks scheduled")
         else:
-            logger.error("Auth retry at 09:05 also failed — no trades today")
-            self.notifier.send_message(
-                "❌ Auth retry failed. No trades today.\n"
-                "Check Kite credentials and CAPTCHA status."
-            )
+            now = datetime.now(IST).time()
+            if now > datetime.strptime("09:25", "%H:%M").time():
+                # Past 09:25 — stop retrying, no trades today
+                jobs_to_cancel = [j for j in schedule.jobs if j.job_func == self._retry_init]
+                for j in jobs_to_cancel:
+                    schedule.cancel_job(j)
+                logger.error("Auth retries exhausted (past 09:25) — no trades today")
+                self.notifier.send_message(
+                    "❌ Auth failed after all retries. No trades today.\n"
+                    "CAPTCHA may still be active on Kite."
+                )
+            else:
+                logger.info("Auth retry failed, will try again in 5 min...")
 
     def start(self):
         """Start the trading system with scheduled tasks."""
@@ -581,8 +589,8 @@ class TradingOrchestrator:
                 "Run `python scripts/inject_token.py` on your local machine.\n"
                 "System will retry auth at 09:05 IST."
             )
-            # Schedule one retry — by then user can have run inject_token.py
-            schedule.every().day.at("09:05").do(self._retry_init)
+            # Schedule retry every 5 min — user can run inject_token.py any time
+            schedule.every(5).minutes.do(self._retry_init)
         else:
             self._setup_scheduled_tasks()
 
