@@ -532,6 +532,39 @@ class TradingOrchestrator:
         except Exception as e:
             logger.error(f"Approval processing failed: {e}")
 
+    def _setup_scheduled_tasks(self):
+        """Register all scheduled trading tasks."""
+        schedule.every().day.at("09:00").do(self.run_pre_market)
+        schedule.every().day.at("09:30").do(self.run_options_scan)
+        # Swing scan disabled - negative expectancy confirmed in 2-year backtest
+        # schedule.every().day.at("10:00").do(self.run_swing_scan)
+        schedule.every(5).minutes.do(self.monitor_positions)
+        schedule.every().day.at("15:35").do(self.run_post_market)
+        schedule.every().friday.at("15:45").do(self.run_weekly_review)
+        schedule.every(30).minutes.do(self._process_approvals)
+        logger.info("Scheduled tasks registered")
+
+    def _retry_init(self):
+        """Retry initialization at 09:05 if startup auth failed (CAPTCHA fallback)."""
+        logger.info("Retrying auth (09:05 scheduled retry)...")
+        # Cancel this job so it only runs once
+        jobs_to_cancel = [j for j in schedule.jobs if j.job_func == self._retry_init]
+        for j in jobs_to_cancel:
+            schedule.cancel_job(j)
+
+        if self.initialize():
+            global _system_healthy
+            _system_healthy = True
+            self._setup_scheduled_tasks()
+            self.notifier.send_message("✅ Auth retry succeeded — system is LIVE")
+            logger.info("Auth retry succeeded — all tasks scheduled")
+        else:
+            logger.error("Auth retry at 09:05 also failed — no trades today")
+            self.notifier.send_message(
+                "❌ Auth retry failed. No trades today.\n"
+                "Check Kite credentials and CAPTCHA status."
+            )
+
     def start(self):
         """Start the trading system with scheduled tasks."""
         # Start health endpoint for Container Apps liveness probe
@@ -543,21 +576,17 @@ class TradingOrchestrator:
         if not self.initialize():
             global _system_healthy
             _system_healthy = False
-            sys.exit(1)
+            self.notifier.send_message(
+                "⚠️ Kite auth failed at startup (CAPTCHA may be blocking).\n"
+                "Run `python scripts/inject_token.py` on your local machine.\n"
+                "System will retry auth at 09:05 IST."
+            )
+            # Schedule one retry — by then user can have run inject_token.py
+            schedule.every().day.at("09:05").do(self._retry_init)
+        else:
+            self._setup_scheduled_tasks()
 
         self.running = True
-
-        # Schedule tasks (Theta-Only Mode)
-        schedule.every().day.at("09:00").do(self.run_pre_market)
-        schedule.every().day.at("09:30").do(self.run_options_scan)
-        # Swing scan disabled - negative expectancy confirmed in 2-year backtest
-        # schedule.every().day.at("10:00").do(self.run_swing_scan)
-        schedule.every(5).minutes.do(self.monitor_positions)
-        schedule.every().day.at("15:35").do(self.run_post_market)
-
-        # Learning loop tasks
-        schedule.every().friday.at("15:45").do(self.run_weekly_review)
-        schedule.every(30).minutes.do(self._process_approvals)  # Check Telegram approvals
 
         # Handle graceful shutdown
         sig.signal(sig.SIGINT, self._shutdown)

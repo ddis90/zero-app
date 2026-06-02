@@ -313,17 +313,86 @@ class HeadlessAuth:
         except Exception:
             return None
 
+    def _get_kv_access_token(self) -> dict | None:
+        """
+        Check Azure Key Vault for a manually pre-loaded access token.
+        This is the CAPTCHA fallback: if headless login is blocked, the user
+        runs scripts/inject_token.py locally each morning to push a valid token.
+        Returns token dict if found and from today, otherwise None.
+        """
+        vault_url = os.getenv("AZURE_KEY_VAULT_URL", "")
+        if not vault_url:
+            return None
+        try:
+            from azure.identity import ManagedIdentityCredential, DefaultAzureCredential
+            from azure.keyvault.secrets import SecretClient
+            import json
+
+            credential = (
+                ManagedIdentityCredential()
+                if os.getenv("AZURE_DEPLOYMENT")
+                else DefaultAzureCredential()
+            )
+            client = SecretClient(vault_url=vault_url, credential=credential)
+            try:
+                secret = client.get_secret("KITE-ACCESS-TOKEN")
+            except Exception:
+                return None  # Secret not set yet
+
+            token_value = secret.value
+            if not token_value:
+                return None
+
+            # Accept plain access token string or full JSON dict
+            try:
+                data = json.loads(token_value)
+            except (json.JSONDecodeError, ValueError):
+                data = {
+                    "access_token": token_value,
+                    "api_key": self.api_key,
+                    "user_id": self.user_id,
+                    "login_time": datetime.now(IST).isoformat(),
+                }
+
+            # Kite tokens expire at midnight — only accept tokens from today
+            login_time_str = data.get("login_time", "")
+            if login_time_str:
+                try:
+                    login_time = datetime.fromisoformat(login_time_str)
+                    if login_time.date() != datetime.now(IST).date():
+                        logger.info("Key Vault KITE-ACCESS-TOKEN is from a previous day, skipping")
+                        return None
+                except Exception:
+                    pass  # Can't parse date — use token anyway
+
+            logger.info(f"Loaded KITE-ACCESS-TOKEN from Key Vault (user: {data.get('user_id', '?')})")
+            return data
+
+        except Exception as e:
+            logger.warning(f"Key Vault access token check failed: {e}")
+            return None
+
     def ensure_authenticated(self) -> dict:
         """
-        Ensure we have a valid token. Load from file or login fresh.
-        This is the main entry point for the orchestrator.
+        Ensure we have a valid token. Priority order:
+          1. Manually pre-loaded token in Key Vault (CAPTCHA fallback via inject_token.py)
+          2. Locally saved token file (from a previous successful login today)
+          3. Fresh headless login
         """
+        # 1. Check Key Vault manual token (CAPTCHA fallback)
+        kv_token = self._get_kv_access_token()
+        if kv_token:
+            self._save_token(kv_token)  # cache locally so future calls are fast
+            return kv_token
+
+        # 2. Check saved token file
         saved = self.load_saved_token()
         if saved:
             logger.info("Using saved token (still valid)")
             return saved
 
-        logger.info("Token expired or not found. Performing headless login...")
+        # 3. Headless login
+        logger.info("No valid token found. Performing headless login...")
         return self.login()
 
 
