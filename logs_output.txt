@@ -1,0 +1,62 @@
+﻿python : C:\Users\A962251\AppData\Local\Packages\PythonSoftwareFoundation.Pytho
+n.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\requests
+\__init__.py:113: RequestsDependencyWarning: urllib3 (2.6.3) or chardet 
+(7.4.3)/charset_normalizer (3.4.4) doesn't match a supported version!
+At line:1 char:32
++ ... env:PYTHONIOENCODING="utf-8"; python scripts/get_logs.py 2>&1 | Out-F ...
++                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (C:\Users\A96225...ported version! 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  warnings.warn(
+2026-06-01T08:00:30 | ca-zero-agent | KeyError: 'stop_loss_pct'
+2026-06-01T08:00:30 | ca-zero-agent | ============================================================
+2026-06-01T08:00:30 | ca-zero-agent |   File "/app/src/agents/learner.py", line 45, in _load_params
+2026-06-01T08:00:30 | ca-zero-agent |   Mode: ≡ƒÆ░ LIVE TRADING
+2026-06-01T08:00:30 | ca-zero-agent |                   ^^^^^^^^^^^^^^^^^^^
+2026-06-01T08:00:30 | ca-zero-agent | ============================================================
+2026-06-01T08:00:30 | ca-zero-agent |     self.params = self._load_params()
+2026-06-01T08:00:30 | ca-zero-agent |   Env:  Γÿü∩╕Å Azure Cloud
+2026-06-01T08:00:30 | ca-zero-agent |                              ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+2026-06-01T08:00:30 | ca-zero-agent |     self.strategy_params = StrategyParams(config_path)
+2026-06-01T08:00:30 | ca-zero-agent |   File "/app/src/agents/learner.py", line 102, in __init__
+2026-06-01T08:00:30 | ca-zero-agent |     self.learner = Learner(knowledge_base=self.knowledge_base)
+2026-06-01T08:00:30 | ca-zero-agent |   Time: 2026-06-01 13:30:30 IST
+2026-06-01T08:00:30 | ca-zero-agent |   Zero Trading Agent
+2026-06-01T08:00:30 | ca-zero-agent |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-06-01T08:00:30 | ca-zero-agent |   File "<frozen runpy>", line 88, in _run_code
+2026-06-01T08:00:30 | ca-zero-agent |   File "/app/src/main.py", line 606, in main
+2026-06-01T08:00:30 | ca-zero-agent |     main()
+2026-06-01T08:00:30 | ca-zero-agent |   File "/app/src/main.py", line 611, in <module>
+2026-06-01T08:00:30 | ca-zero-agent |     orchestrator = TradingOrchestrator(paper_trade=paper_trade)
+2026-06-01T08:00:30 | ca-zero-agent |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-06-01T08:00:30 | ca-zero-agent |   File "/app/src/main.py", line 104, in __init__
+2026-06-01T08:00:30 | ca-zero-agent |   File "/app/src/agents/learner.py", line 35, in __init__
+2026-06-01T08:00:30 | ca-zero-agent |   File "<frozen runpy>", line 198, in _run_module_as_main
+2026-06-01T08:00:30 | ca-zero-agent |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-06-01T08:00:30 | ca-zero-agent | Traceback (most recent call last):
+2026-06-01T08:00:30 | ca-zero-agent |     "options_stop_loss_pct": config["options"]["stop_loss_pct"],
+2026-06-01T07:57:40 | ca-zero-agent | ============================================================
+2026-06-01T07:57:40 | ca-zero-agent |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-06-01T07:57:40 | ca-zero-agent |     self.strategy_params = StrategyParams(config_path)
+2026-06-01T07:57:40 | ca-zero-agent |   File "/app/src/agents/learner.py", line 35, in __init__
+2026-06-01T07:57:40 | ca-zero-agent |     self.params = self._load_params()
+2026-06-01T07:57:40 | ca-zero-agent |     main()
+2026-06-01T07:57:40 | ca-zero-agent |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-06-01T07:57:40 | ca-zero-agent |     "options_stop_loss_pct": config["options"]["stop_loss_pct"],
+2026-06-01T07:57:40 | ca-zero-agent |   File "/app/src/main.py", line 104, in __init__
+2026-06-01T07:57:40 | ca-zero-agent |   File "<frozen runpy>", line 198, in _run_module_as_main
+2026-06-01T07:57:40 | ca-zero-agent |     orchestrator = TradingOrchestrator(paper_trade=paper_trade)
+2026-06-01T07:57:40 | ca-zero-agent |   Env:  Γÿü∩╕Å Azure Cloud
+2026-06-01T07:57:40 | ca-zero-agent |   Time: 2026-06-01 13:27:40 IST
+2026-06-01T07:57:40 | ca-zero-agent |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-06-01T07:57:40 | ca-zero-agent |   File "/app/src/main.py", line 606, in main
+2026-06-01T07:57:40 | ca-zero-agent |   Zero Trading Agent
+2026-06-01T07:57:40 | ca-zero-agent |   File "<frozen runpy>", line 88, in _run_code
+2026-06-01T07:57:40 | ca-zero-agent | ============================================================
+2026-06-01T07:57:40 | ca-zero-agent |     self.learner = Learner(knowledge_base=self.knowledge_base)
+2026-06-01T07:57:40 | ca-zero-agent |   File "/app/src/agents/learner.py", line 102, in __init__
+2026-06-01T07:57:40 | ca-zero-agent |   Mode: ≡ƒÆ░ LIVE TRADING
+2026-06-01T07:57:40 | ca-zero-agent |   File "/app/src/main.py", line 611, in <module>
+2026-06-01T07:57:40 | ca-zero-agent | Traceback (most recent call last):
